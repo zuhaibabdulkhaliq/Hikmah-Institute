@@ -1,0 +1,193 @@
+openapi: 3.1.0
+info:
+  title: Hikmah Institute Academic API
+  version: 2.0.0-draft
+  description: |
+    REST architecture and core models. Developer must expand all referenced endpoints
+    before shipping and enforce RBAC/section scope on every request. Institute grade,
+    attendance and rank policies require approval.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /me:
+    get:
+      summary: Get current identity and scoped assignments
+      responses:
+        '200':
+          description: Authorized identity
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Identity' }
+  /sections/{sectionId}/attendance/{schoolDate}:
+    get:
+      summary: Read one day and eligible roster
+      parameters:
+        - { $ref: '#/components/parameters/sectionId' }
+        - { $ref: '#/components/parameters/schoolDate' }
+      responses:
+        '200':
+          description: Authorized section-day sheet
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttendanceSheet' }
+        '403': { description: Actor not assigned to this section }
+    put:
+      summary: Save/replace attendance draft for eligible student enrollments
+      parameters:
+        - { $ref: '#/components/parameters/sectionId' }
+        - { $ref: '#/components/parameters/schoolDate' }
+        - { name: If-Match, in: header, required: true, schema: { type: string }, description: Sheet version for optimistic concurrency }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [records]
+              properties:
+                records:
+                  type: array
+                  items: { $ref: '#/components/schemas/AttendanceRecordInput' }
+      responses:
+        '200': { description: Saved new sheet version }
+        '403': { description: Unassigned section / backdate window expired }
+        '409': { description: Stale sheet version }
+        '422': { description: Invalid or ineligible enrollment/date }
+  /sections/{sectionId}/attendance/bulk:
+    post:
+      summary: Atomic multiple-day attendance entry
+      parameters:
+        - { $ref: '#/components/parameters/sectionId' }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [days]
+              properties:
+                days:
+                  type: array
+                  items:
+                    type: object
+                    required: [schoolDate, records]
+                    properties:
+                      schoolDate: { type: string, format: date }
+                      version: { type: integer, minimum: 1 }
+                      records:
+                        type: array
+                        items: { $ref: '#/components/schemas/AttendanceRecordInput' }
+      responses:
+        '200': { description: All days saved }
+        '409': { description: Date or version conflict; no partial write }
+        '422': { description: Validation error; no partial write }
+  /assessments/{assessmentId}/marks/bulk:
+    put:
+      summary: Submit or save marks for assigned paper only
+      parameters:
+        - { name: assessmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entries]
+              properties:
+                entries:
+                  type: array
+                  items: { $ref: '#/components/schemas/MarkInput' }
+      responses:
+        '200': { description: Mark rows saved }
+        '403': { description: User not assigned teacher/admin }
+        '422': { description: Above paper max or bad state/score }
+  /results/{cycleId}/{sectionId}/validate:
+    post:
+      summary: Validate scheme, marks, attendance coverage and policy approvals before publish
+      parameters:
+        - { name: cycleId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/sectionId' }
+      responses:
+        '200':
+          description: Preflight report
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ValidationReport' }
+  /results/{cycleId}/{sectionId}/publish:
+    post:
+      summary: Atomically supersede current publication and create immutable result run revision
+      parameters:
+        - { name: cycleId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/sectionId' }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [validationHash]
+              properties:
+                validationHash: { type: string, description: Preflight hash to stop stale publish }
+                correctionReason: { type: string }
+      responses:
+        '201': { description: Published immutable revision }
+        '403': { description: Actor lacks publish permission }
+        '409': { description: Stale preflight or concurrent publish }
+        '422': { description: Unapproved policies or incomplete records }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    sectionId: { name: sectionId, in: path, required: true, schema: { type: string, format: uuid } }
+    schoolDate: { name: schoolDate, in: path, required: true, schema: { type: string, format: date } }
+  schemas:
+    Identity:
+      type: object
+      required: [userId, roles, sectionAssignments]
+      properties:
+        userId: { type: string, format: uuid }
+        roles: { type: array, items: { type: string, enum: [ADMIN, READ_ONLY] } }
+        sectionAssignments:
+          type: array
+          items:
+            type: object
+            properties:
+              sectionId: { type: string, format: uuid }
+              role: { type: string, enum: [CLASS_TEACHER, AMEER, ATTENDANCE_ASSISTANT] }
+    AttendanceRecordInput:
+      type: object
+      required: [enrollmentId, status]
+      properties:
+        enrollmentId: { type: string, format: uuid }
+        status: { type: string, enum: [PRESENT, ABSENT, LATE, LEAVE] }
+        remark: { type: string, maxLength: 1000 }
+    AttendanceSheet:
+      type: object
+      required: [sectionId, schoolDate, version, status, records]
+      properties:
+        sectionId: { type: string, format: uuid }
+        schoolDate: { type: string, format: date }
+        version: { type: integer, minimum: 1 }
+        status: { type: string, enum: [DRAFT, SUBMITTED, LOCKED] }
+        records: { type: array, items: { $ref: '#/components/schemas/AttendanceRecordInput' } }
+    MarkInput:
+      type: object
+      required: [enrollmentId, state]
+      properties:
+        enrollmentId: { type: string, format: uuid }
+        state: { type: string, enum: [PENDING, GRADED, ABSENT, EXEMPT, WITHHELD, NOT_APPLICABLE, UNKNOWN_LEGACY_BLANK] }
+        awarded: { type: [number, 'null'], minimum: 0, description: Non-null iff state = GRADED; server checks paper max }
+        reason: { type: string }
+        version: { type: integer, minimum: 1 }
+    ValidationReport:
+      type: object
+      required: [canPublish, blockingErrors, warnings, validationHash]
+      properties:
+        canPublish: { type: boolean }
+        blockingErrors: { type: array, items: { type: string } }
+        warnings: { type: array, items: { type: string } }
+        validationHash: { type: string }

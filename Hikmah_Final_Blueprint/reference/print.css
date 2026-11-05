@@ -1,0 +1,47 @@
+@page {
+  size: A4;
+  margin: 18mm 17mm 19mm 17mm;
+  @top-left { content: "HIKMAH INSTITUTE  /  FINAL BLUEPRINT"; font: 8pt "DejaVu Sans"; color: #718299; }
+  @top-right { content: "V2.0  -  05 NOV 2026"; font: 8pt "DejaVu Sans"; color: #718299; }
+  @bottom-left { content: "Confidential institutional specification - synthetic examples only"; font: 7pt "DejaVu Sans"; color: #8997aa; }
+  @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt "DejaVu Sans"; color: #52657c; }
+}
+@page cover {margin:0; @top-left {content:none} @top-right {content:none} @bottom-left {content:none} @bottom-right {content:none}}
+@page diagram {size:A4 landscape; margin: 15mm 14mm; @top-left {content:"HIKMAH INSTITUTE - ER DIAGRAM";font:8pt "DejaVu Sans";color:#718299} @top-right {content:"V2.0";font:8pt "DejaVu Sans";color:#718299} @bottom-left {content:none} @bottom-right{content:"Page " counter(page); font:8pt "DejaVu Sans";color:#52657c}}
+html {font-family:"DejaVu Sans", sans-serif; font-size:9.3pt; color:#223044}
+body {line-height:1.43; margin:0;}
+#title-block-header {display:none}
+.cover {page: cover; break-after:page; display:block; padding-top:50mm; padding: 30mm 26mm; background:linear-gradient(140deg, #102c53 0%, #154b7b 68%, #256e95 100%); color:white; min-height: 297mm; box-sizing:border-box}
+.cover .kicker {letter-spacing:0.19em; font-weight:bold; text-transform:uppercase; color:#b9d7e9; font-size:11pt; margin:0 0 22mm}
+.cover h1 {color:white; font-size:34pt; line-height:1.12; font-weight:700; padding:0; border:0; margin:0 0 10mm; break-before:auto!important}
+.cover .deck {font-size:15pt; font-weight:400; color:#d9eaf5; line-height:1.5; max-width:150mm}
+.cover .meta {margin-top:25mm; font-size:10pt; color:#c8dcec; border-top:1px solid #669abc; padding-top:8mm}
+.cover .tag {display:inline-block; padding:2mm 3mm; border:1px solid #83b9d1; border-radius:4px; margin-right:3mm; margin-top:3mm; font-size:8.8pt}
+nav#TOC {break-before:page; break-after:page; padding-top:2mm}
+nav#TOC h2 {font-size:21pt; color:#123356; margin-top:0}
+nav#TOC ul {list-style:none; padding-left:0; column-count:2; column-gap:12mm;}
+nav#TOC li {font-size:8.5pt; padding:2.1mm 0; break-inside:avoid; border-bottom:1px solid #e3eaf1}
+nav#TOC a {color:#2a5071; text-decoration:none}
+h1 {break-before:page; color:#173b62; font-size:19pt; line-height:1.24; border-bottom:2px solid #9ebdd6; padding-bottom:3mm; margin:0 0 7mm}
+h2 {color:#1c527e; font-size:12.5pt; margin:6mm 0 2.5mm; break-after:avoid}
+h3 {color:#234f70; font-size:11pt; margin:5mm 0 2mm; break-after:avoid}
+p {margin:0 0 3mm}
+strong {color:#133758}
+ul,ol {padding-left:6mm; margin:1mm 0 4mm}
+li {margin: 0 0 1.5mm;}
+pre {background:#f0f5f9; border-left:3px solid #86a9c6; padding:3mm; font-family:"DejaVu Sans Mono",monospace; font-size:8pt; white-space:pre-wrap; overflow-wrap:anywhere; break-inside:auto;}
+code {font-family:"DejaVu Sans Mono",monospace; background:#eef3f9; border-radius:3px; padding:0.2mm 0.65mm; font-size:8.1pt;}
+pre code {background:none; padding:0;}
+table {border-collapse:collapse; width:100%; margin:3mm 0 5mm; font-size:7.9pt; line-height:1.30; break-inside:auto;}
+thead {display:table-header-group;}
+th {background:#143d67; color:white; padding:2.2mm; text-align:left; border:1px solid #2b567a; font-weight:bold}
+td {border:1px solid #d2dde9; padding:2.1mm; vertical-align:top; overflow-wrap:anywhere;}
+tr:nth-child(even) td {background:#f5f8fc}
+tr {break-inside:auto}
+blockquote {border-left:4px solid #9cbed8; padding:2mm 4mm; background:#f0f6fb}
+hr {border:0; border-top:1px solid #bccddd; margin:7mm 0}
+.diagramPage {page:diagram; break-before:page; break-after:page;}
+.diagramPage h2 {font-size:20pt; border-bottom:2px solid #b1c8da; padding-bottom:3mm; margin:0 0 5mm}
+.diagramPage img {display:block; width:auto; max-width:100%; height:127mm; object-fit:contain; margin:3mm auto 0;}
+.diagramPage figcaption {text-align:center; font-size:9pt; color:#667990; margin-top:4mm}
+.arabic {font-family:"Noto Kufi Arabic", "Amiri", serif; direction:rtl}

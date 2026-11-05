@@ -1,0 +1,16 @@
+digraph g {
+ graph [rankdir=LR, bgcolor=white, pad="0.25", splines=polyline, nodesep="0.42", ranksep="0.55", fontsize=18, label="Publication Control Flow", labelloc=t, fontname="DejaVu Sans", fontcolor="#152947"];
+ node [shape=box,style="rounded,filled",fillcolor="#eff6fc",color="#a9c2da",fontname="DejaVu Sans",fontsize=11,margin="0.20,0.15"];
+ edge [color="#64809c", fontname="DejaVu Sans",fontsize=9];
+ a [label="Configure\nYear / Section / Staff"];
+ b [label="Take Attendance\n(P / A / L / Leave)"];
+ c [label="Configure / Approve\nPaper Scheme"];
+ d [label="Enter / Review\nPaper Marks"];
+ e [shape=diamond, label="Preflight\nPasses?",fillcolor="#fff6e6"];
+ f [label="Fix Missing /\nUnapproved Data", fillcolor="#ffe8e8"];
+ g [label="Publish New\nResult Revision",fillcolor="#dcf3e4"];
+ h [label="Freeze Paper + Group +\nAttendance Snapshots",fillcolor="#dcf3e4"];
+ i [label="Generate Urdu\nPDF / CSV",fillcolor="#dcf3e4"];
+ j [label="Correction?\nAudit + New Revision",fillcolor="#fff6e6"];
+ a -> b; a -> c; b -> e; c -> d; d -> e; e -> f [label="No"]; f -> e; e -> g [label="Yes"];g -> h; h -> i; i -> j; j -> e [label="If approved correction",constraint=false];
+}

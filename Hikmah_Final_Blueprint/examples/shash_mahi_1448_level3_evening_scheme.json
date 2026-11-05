@@ -1,0 +1,168 @@
+{
+  "fixture_name": "synthetic_1448_shash_mahi_level3_evening",
+  "source_basis": "header schema only; no student data",
+  "academic_year_label_hijri": "1448",
+  "cycle_code": "SHASH_MAHI",
+  "level_label_ur": "ثالثہ",
+  "program_label_ur": "شام",
+  "approval_status": "PROPOSED_NOT_APPROVED",
+  "paper_count": 11,
+  "paper_max_total": 600,
+  "papers": [
+    {
+      "code": "P01",
+      "label_ur": "تفسیر",
+      "max_marks": 33,
+      "display_order_rtl": 1,
+      "group_code": "G1",
+      "type": "WRITTEN",
+      "date": null
+    },
+    {
+      "code": "P02",
+      "label_ur": "تفسیر",
+      "max_marks": 33,
+      "display_order_rtl": 2,
+      "group_code": "G1",
+      "type": "WRITTEN",
+      "date": null
+    },
+    {
+      "code": "P03",
+      "label_ur": "حدیث",
+      "max_marks": 34,
+      "display_order_rtl": 3,
+      "group_code": "G1",
+      "type": "WRITTEN",
+      "date": null
+    },
+    {
+      "code": "P04",
+      "label_ur": "مبادی الاصول",
+      "max_marks": 34,
+      "display_order_rtl": 4,
+      "group_code": "G2",
+      "type": "WRITTEN",
+      "date": null
+    },
+    {
+      "code": "P05",
+      "label_ur": "اصول الشاشی",
+      "max_marks": 66,
+      "display_order_rtl": 5,
+      "group_code": "G2",
+      "type": "WRITTEN",
+      "date": null
+    },
+    {
+      "code": "P06",
+      "label_ur": "کافیہ",
+      "max_marks": 100,
+      "display_order_rtl": 6,
+      "group_code": "G3",
+      "type": "WRITTEN",
+      "date": null
+    },
+    {
+      "code": "P07",
+      "label_ur": "قدوری بیوع",
+      "max_marks": 66,
+      "display_order_rtl": 7,
+      "group_code": "G4",
+      "type": "WRITTEN",
+      "date": null
+    },
+    {
+      "code": "P08",
+      "label_ur": "قدوری جنایات",
+      "max_marks": 34,
+      "display_order_rtl": 8,
+      "group_code": "G4",
+      "type": "WRITTEN",
+      "date": null
+    },
+    {
+      "code": "P09",
+      "label_ur": "انشاء",
+      "max_marks": 34,
+      "display_order_rtl": 9,
+      "group_code": "G5",
+      "type": "WRITTEN",
+      "date": null
+    },
+    {
+      "code": "P10",
+      "label_ur": "نفحۃ العرب",
+      "max_marks": 66,
+      "display_order_rtl": 10,
+      "group_code": "G5",
+      "type": "WRITTEN",
+      "date": null
+    },
+    {
+      "code": "P11",
+      "label_ur": "شرح تہذیب",
+      "max_marks": 100,
+      "display_order_rtl": 11,
+      "group_code": "G6",
+      "type": "WRITTEN",
+      "date": null
+    }
+  ],
+  "result_groups": [
+    {
+      "code": "G1",
+      "max_marks": 100,
+      "paper_codes": [
+        "P01",
+        "P02",
+        "P03"
+      ]
+    },
+    {
+      "code": "G2",
+      "max_marks": 100,
+      "paper_codes": [
+        "P04",
+        "P05"
+      ]
+    },
+    {
+      "code": "G3",
+      "max_marks": 100,
+      "paper_codes": [
+        "P06"
+      ]
+    },
+    {
+      "code": "G4",
+      "max_marks": 100,
+      "paper_codes": [
+        "P07",
+        "P08"
+      ]
+    },
+    {
+      "code": "G5",
+      "max_marks": 100,
+      "paper_codes": [
+        "P09",
+        "P10"
+      ]
+    },
+    {
+      "code": "G6",
+      "max_marks": 100,
+      "paper_codes": [
+        "P11"
+      ]
+    }
+  ],
+  "attendance_policy": "UNAPPROVED",
+  "grade_scale": "UNAPPROVED",
+  "rank_policy": "UNAPPROVED",
+  "attendance_window": {
+    "start_date": null,
+    "end_date": null
+  }
+}

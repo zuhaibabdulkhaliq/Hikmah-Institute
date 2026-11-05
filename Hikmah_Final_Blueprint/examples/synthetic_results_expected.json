@@ -1,0 +1,67 @@
+{
+  "policy": "synthetic numerical fixture; no real student details",
+  "students": [
+    {
+      "student_number": "SYN-001",
+      "synthetic_name": "Student A",
+      "marks_rtl": [
+        30,
+        31,
+        27,
+        28,
+        55,
+        88,
+        61,
+        30,
+        24,
+        58,
+        81
+      ],
+      "group_totals": [
+        88,
+        83,
+        88,
+        91,
+        82,
+        81
+      ],
+      "total": 513,
+      "max_total": 600,
+      "percent": 85.5,
+      "attendance_percentage": null,
+      "grade": "UNCONFIGURED",
+      "rank": "UNCONFIGURED"
+    },
+    {
+      "student_number": "SYN-002",
+      "synthetic_name": "Student B",
+      "marks_rtl": [
+        16,
+        22,
+        19,
+        24,
+        38,
+        49,
+        40,
+        20,
+        16,
+        31,
+        64
+      ],
+      "group_totals": [
+        57,
+        62,
+        49,
+        60,
+        47,
+        64
+      ],
+      "total": 339,
+      "max_total": 600,
+      "percent": 56.5,
+      "attendance_percentage": null,
+      "grade": "UNCONFIGURED",
+      "rank": "UNCONFIGURED"
+    }
+  ]
+}

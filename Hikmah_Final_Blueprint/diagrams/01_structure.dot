@@ -1,0 +1,24 @@
+digraph g {
+  graph [rankdir=TB, splines=ortho, bgcolor=white, pad="0.28", nodesep="0.48", ranksep="0.78", fontsize=18, label="Academic Structure + Roles", labelloc=t, fontname="DejaVu Sans", fontcolor="#152947"];
+  node [shape=record, style="rounded,filled", color="#bed1e7", penwidth=1.3, fillcolor="#f1f6fc", fontname="DejaVu Sans", fontsize=10, margin="0.13,0.10"];
+  edge [color="#5b7697", arrowsize=0.7, fontsize=9, fontname="DejaVu Sans"];
+  org [label="{organizations|id PK|name|timezone}"];
+  program [label="{programs|id PK|organization_id FK|code}"];
+  year [label="{academic_years|id PK|organization_id FK|year label / dates}"];
+  level [label="{levels|id PK|organization_id FK|ordinal / name}"];
+  sec [fillcolor="#dceeff",label="{sections|id PK|program_id FK|academic_year_id FK|level_id FK|code}"];
+  enrollment [label="{enrollments|id PK|student_id FK|section_id FK|joined_on / left_on}"];
+  student [label="{students|id PK|student_number|name_ur}"];
+  user [label="{app_users|id PK|auth_subject|display_name}"];
+  roles [label="{organization_roles|user_id FK|organization_id FK|role ADMIN}"];
+  staff [label="{section_staff_assignments|section_id FK|user_id FK|role AMEER/CLASS_TEACHER}"];
+  sub [label="{subjects|id PK|code / name_ur}"];
+  offer [label="{section_subjects|id PK|section_id FK|subject_id FK}"];
+  teach [label="{subject_teacher_assignments|section_subject_id FK|teacher_user_id FK}"];
+  org -> {program year level roles};
+  program -> sec; year -> sec; level -> sec;
+  sec -> {enrollment staff offer};
+  student -> enrollment;
+  user -> {roles staff teach};
+  sub -> offer; offer -> teach;
+}

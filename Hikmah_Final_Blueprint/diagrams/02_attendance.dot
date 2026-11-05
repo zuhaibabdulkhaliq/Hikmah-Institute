@@ -1,0 +1,17 @@
+digraph g {
+ graph [rankdir=TB, splines=ortho, bgcolor=white, pad="0.22", nodesep="0.45", ranksep="0.82", fontsize=18, label="Attendance + Session Cutoffs", labelloc=t, fontname="DejaVu Sans", fontcolor="#152947"];
+ node [shape=record, style="rounded,filled", color="#a8c5dd", penwidth=1.3, fillcolor="#f1f6fc", fontname="DejaVu Sans", fontsize=10, margin="0.13,0.10"];
+ edge [color="#5b7697", arrowsize=0.65];
+ sec [label="{sections|id PK|year/level/program}"];
+ enr [label="{enrollments|id PK|section_id FK|date eligibility}"];
+ cal [label="{section_calendar_days|section_id FK|school_date|counts_for_attendance}"];
+ sheet [fillcolor="#dceeff",label="{attendance_sheets|section_id FK|school_date|DRAFT/SUBMITTED/LOCKED}"];
+ rec [label="{attendance_records|sheet_id FK|enrollment_id FK|P/A/L/LEAVE}"];
+ year [label="{academic_years|id PK}"];
+ policy [label="{attendance_policies|academic_year_id FK|section_id FK optional|approval/version}"];
+ rule [label="{attendance_status_rules|policy_id FK|earned_credit|possible_credit}"];
+ cycle [label="{exam_cycles|academic_year_id FK|code SEH/SHASH/MOCK}"];
+ win [fillcolor="#e4f7f3",label="{exam_section_settings|cycle_id FK|section_id FK|attendance_from/to}"];
+ sec -> {enr cal sheet win}; sheet -> rec; enr -> rec;
+ year -> {cycle policy};policy -> {rule win};cycle -> win;
+}
