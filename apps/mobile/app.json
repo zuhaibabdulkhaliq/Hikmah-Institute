@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Hikmah Institute",
+    "slug": "hikmah-institute",
+    "scheme": "hikmah",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.hikmah.institute"
+    },
+    "android": { "package": "org.hikmah.institute" },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": { "typedRoutes": true }
+  }
+}

@@ -1,0 +1,8 @@
+node_modules
+**/node_modules
+**/.next
+**/.expo
+**/dist
+.data
+Hikmah_Final_Blueprint
+pnpm-lock.yaml

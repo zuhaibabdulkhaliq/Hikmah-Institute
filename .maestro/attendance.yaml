@@ -1,0 +1,15 @@
+appId: org.hikmah.institute
+---
+- launchApp
+- tapOn: Email
+- inputText: ${STAFF_EMAIL}
+- tapOn: Password
+- inputText: ${STAFF_PASSWORD}
+- tapOn: Sign in
+- assertVisible: Your class, at a glance
+- tapOn: Mark all present
+- scrollUntilVisible:
+    element: Save draft
+- tapOn: Save draft
+- tapOn: Submit complete roster
+- assertVisible: SUBMITTED.*

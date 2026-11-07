@@ -1,0 +1,45 @@
+{
+  "name": "hikmah",
+  "private": true,
+  "packageManager": "pnpm@10.28.2",
+  "scripts": {
+    "dev": "concurrently -n api,web 'pnpm dev:api' 'pnpm dev:web'",
+    "dev:api": "tsx watch apps/api/src/main.ts",
+    "dev:web": "pnpm --filter @hikmah/web dev",
+    "dev:mobile": "pnpm --filter @hikmah/mobile start",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "typecheck": "tsc --noEmit && pnpm --filter @hikmah/web typecheck && pnpm --filter @hikmah/mobile typecheck",
+    "lint": "eslint .",
+    "test": "tsx scripts/test.ts",
+    "build": "pnpm --filter @hikmah/web build && tsup apps/api/src/main.ts --format esm --out-dir dist/api",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "dependencies": {
+    "@fastify/cookie": "11.0.2",
+    "@fastify/cors": "11.2.0",
+    "@fastify/helmet": "13.0.2",
+    "@fastify/rate-limit": "10.3.0",
+    "better-auth": "1.7.18",
+    "decimal.js": "10.6.0",
+    "dotenv": "17.2.3",
+    "fastify": "5.12.8",
+    "pg": "8.18.0",
+    "zod": "4.6.7",
+    "csv-parse": "7.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.9",
+    "@types/pg": "8.16.0",
+    "concurrently": "9.2.1",
+    "eslint": "9.39.2",
+    "typescript-eslint": "8.54.0",
+    "tsup": "8.5.1",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "@playwright/test": "1.58.1",
+    "prettier": "3.8.1",
+    "pnpm": "10.28.2"
+  },
+  "type": "module"
+}

@@ -1,0 +1,1 @@
+CREATE TABLE staff_invitations(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),organization_id uuid REFERENCES organizations(id) NOT NULL,email text NOT NULL,name text NOT NULL,token_hash text UNIQUE NOT NULL,created_by uuid REFERENCES app_users(id) NOT NULL,expires_at timestamptz NOT NULL,accepted_at timestamptz);

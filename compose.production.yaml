@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:17.7-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hikmah
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a unique database password}
+      POSTGRES_DB: hikmah
+    volumes: [postgres:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U hikmah']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  api:
+    image: hikmah-app:local
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      DATABASE_URL: ${DATABASE_URL:?Set postgres://hikmah:URL_ENCODED_PASSWORD@db:5432/hikmah}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set 32+ random characters}
+      BETTER_AUTH_URL: ${PUBLIC_ORIGIN:?Set the HTTPS public origin}
+      WEB_ORIGIN: ${PUBLIC_ORIGIN:?Set the HTTPS public origin}
+      PDF_PYTHON: /opt/pdf/bin/python
+    command: ['sh', '-c', 'node --import tsx scripts/migrate.ts && node dist/api/main.js']
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+  web:
+    image: hikmah-app:local
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      API_INTERNAL_URL: http://api:3001
+    command: ['node_modules/.bin/pnpm', '--filter', '@hikmah/web', 'start', '--hostname', '0.0.0.0']
+    ports: ['127.0.0.1:3000:3000']
+volumes:
+  postgres:
