@@ -16,7 +16,7 @@ try {
   });
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("http://localhost:3000");
+  await page.goto(process.env.SMOKE_BASE_URL ?? "http://localhost:3000");
   await page
     .getByRole("textbox", { name: "Email address" })
     .fill("admin@hikmah.example");

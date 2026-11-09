@@ -4,6 +4,19 @@ A TypeScript workspace with a Next.js staff portal, an Expo Android/iOS app, a F
 
 The implementation includes academic configuration, scoped staff assignments, synthetic enrollment, daily/grid attendance, teacher paper marks, explicit academic policy approval, result preflight, immutable publication revisions, Urdu PDF exports, staff invitation/activation, CSV import and encrypted backup tools. See [the delivery record](docs/IMPLEMENTATION_STATUS.md) for verification and limitations. This is **not yet approved for real student rollout**.
 
+## Docker-only local demo
+
+For an Intel MacBook Pro 2017 on Ventura 13.7.8, follow [the Ventura guide](docs/MACOS-VENTURA.md) for Docker compatibility first. With a working compatible Docker engine, Node.js, Python, fonts and PostgreSQL can all run in containers:
+
+```sh
+bash scripts/demo.sh start
+# Open http://localhost:3000 and read HIKMAH_DEMO_PASSWORD in .env.demo.
+bash scripts/demo.sh test
+bash scripts/demo.sh stop
+```
+
+This uses a separate synthetic demo database, retains data when stopped, and keeps private generated credentials outside Git and image layers. An unsupported older Docker Desktop is a local-demo workaround, not a production recommendation. Current supported macOS/Linux machines can use the same container workflow with a maintained Docker release.
+
 ## Local setup
 
 Prerequisites: Node 24, pnpm **10.28.2**, Docker Compose, Python 3.12+, Pango libraries and Noto Arabic/Urdu fonts. On Debian/Ubuntu install `python3-venv libpango-1.0-0 libpangoft2-1.0-0 fonts-noto-core fonts-noto-extra`. Use the existing checkout; there is no need for another Git worktree.
