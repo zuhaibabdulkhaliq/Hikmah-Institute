@@ -20,7 +20,7 @@ The shared `@hikmah/ui-tokens` package defines blue/white colors and radius valu
 
 ## Original logo
 
-The logo displayed in chat supplied the palette reference. Its original PNG was not accessible from the Mac-local file path in the cloud workspace and has not been recreated. Put the original asset at `apps/web/public/hikmah-logo.png`, then rebuild; the web brand detects it automatically. Without the asset, a decorative academic mark and the institute name are shown. See [the Mac logo instructions](MACOS-APPLE-SILICON.md#use-your-original-logo).
+The logo displayed in chat supplied the palette reference. Its original PNG was not accessible from the Mac-local file path in the cloud workspace and has not been recreated. Put the original asset at `apps/web/public/hikmah_logo.png`, then rebuild; the web brand detects it automatically. Without the asset, a decorative academic mark and the institute name are shown. See [the Mac logo instructions](MACOS-APPLE-SILICON.md#use-your-original-logo).
 
 ## Verification
 

@@ -54,7 +54,7 @@ export function Brand({
         {process.env.NEXT_PUBLIC_HIKMAH_HAS_LOGO === "true" ? (
           <Image
             className="brand-logo"
-            src="/hikmah-logo.png"
+            src="/hikmah_logo.png"
             alt=""
             width={44}
             height={44}

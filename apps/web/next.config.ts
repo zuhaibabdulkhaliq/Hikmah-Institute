@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 const config: NextConfig = {
   env: {
     NEXT_PUBLIC_HIKMAH_HAS_LOGO: existsSync(
-      resolve(process.cwd(), "public/hikmah-logo.png"),
+      resolve(process.cwd(), "public/hikmah_logo.png"),
     )
       ? "true"
       : "false",

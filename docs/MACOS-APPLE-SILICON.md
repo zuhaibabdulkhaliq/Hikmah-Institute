@@ -124,11 +124,11 @@ Keep your original `.env.demo` and Docker database volume. If using Git in a cle
 
 ## Use your original logo
 
-The web app detects `apps/web/public/hikmah-logo.png` at build time. If your original PNG is in Downloads, run these commands from the project folder:
+The web app detects `apps/web/public/hikmah_logo.png` at build time. If your original PNG is in Downloads, run these commands from the project folder:
 
 ```sh
 mkdir -p apps/web/public
-cp "$HOME/Downloads/Hikmah Logo.png" apps/web/public/hikmah-logo.png
+cp "$HOME/Downloads/Hikmah Logo.png" apps/web/public/hikmah_logo.png
 bash scripts/demo.sh start
 ```
 
