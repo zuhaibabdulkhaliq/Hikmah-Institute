@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { sumMarks } from "@hikmah/domain";
+import { AuthFrame, Brand, Icon } from "../components/workspace-ui";
 import {
   createClient,
   type Identity,
@@ -36,6 +37,7 @@ const labels = (s: string) =>
   s.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 export default function Home() {
   const [me, setMe] = useState<Identity | null>(null),
+    [checkingSession, setCheckingSession] = useState(true),
     [view, setView] = useState("Overview"),
     [sections, setSections] = useState<Section[]>([]),
     [section, setSection] = useState(""),
@@ -50,15 +52,20 @@ export default function Home() {
       setMe(identity);
       const s = await api<Section[]>("/v1/sections");
       setSections(s);
-      setSection((v) => v || s[0]?.id || "");
+      setSection((v) => (s.some((item) => item.id === v) ? v : s[0]?.id || ""));
       const c = await api<any[]>("/v1/exam-cycles");
       setCycles(c);
       setCycle(
         (v) =>
-          v || c.find((c) => c.code === "SHASH_MAHI")?.id || c[0]?.id || "",
+          (c.some((item) => item.id === v) ? v : "") ||
+          c.find((c) => c.code === "SHASH_MAHI")?.id ||
+          c[0]?.id ||
+          "",
       );
     } catch {
       setMe(null);
+    } finally {
+      setCheckingSession(false);
     }
   }
   useEffect(() => {
@@ -92,15 +99,23 @@ export default function Home() {
     }
   }
   const admin = me?.roles.includes("ADMIN");
+  if (checkingSession)
+    return (
+      <div className="session-loading" role="status">
+        <Brand />
+        <span>Opening your workspace…</span>
+      </div>
+    );
   if (!me)
     return (
-      <div className="login">
-        <div className="seal">ح</div>
-        <div className="brand">
-          Hikmah Institute<span>ACADEMIC MANAGEMENT</span>
-        </div>
-        <h2>Welcome back</h2>
-        <p>Sign in to your academic workspace.</p>
+      <AuthFrame>
+        <div className="eyebrow">YOUR ACADEMIC WORKSPACE</div>
+        <h2 className="login-title">Welcome back.</h2>
+        <p className="login-intro">
+          A little clarity for your busy day.
+          <br />
+          Sign in to continue to Hikmah.
+        </p>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -113,13 +128,20 @@ export default function Home() {
                   password: f.get("password"),
                 }),
               });
+              setView("Overview");
               await load();
             });
           }}
         >
           <label>
             Email address
-            <input type="email" name="email" required autoComplete="username" />
+            <input
+              type="email"
+              name="email"
+              required
+              autoComplete="username"
+              placeholder="you@institute.edu"
+            />
           </label>
           <label>
             Password
@@ -128,6 +150,7 @@ export default function Home() {
               name="password"
               required
               autoComplete="current-password"
+              placeholder="Enter your password"
             />
           </label>
           {error && (
@@ -135,23 +158,27 @@ export default function Home() {
               {error}
             </p>
           )}
-          <button disabled={busy}>Sign in</button>
+          <button className="login-submit" disabled={busy}>
+            {busy ? "Signing in…" : "Sign in"}
+            <Icon name="arrow" />
+          </button>
         </form>
         <p className="tiny" style={{ marginTop: 24 }}>
           Forgot your password? Contact an administrator for a private recovery
           link. Access is limited to assigned classes.
         </p>
-      </div>
+      </AuthFrame>
     );
   const common = { section, cycle, run, busy, setMessage };
   return (
     <div className="shell">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
       <aside>
-        <div className="seal">ح</div>
-        <div className="brand">
-          Hikmah Institute<span>ACADEMIC OFFICE</span>
-        </div>
-        <nav>
+        <Brand subtitle="ACADEMIC OFFICE" />
+        <div className="nav-caption">WORKSPACE</div>
+        <nav aria-label="Main navigation">
           {navigation
             .filter(
               (v) =>
@@ -168,34 +195,48 @@ export default function Home() {
               <button
                 key={v}
                 className={v === view ? "active" : ""}
+                aria-current={v === view ? "page" : undefined}
                 onClick={() => {
                   setView(v);
                   setError("");
                   setMessage("");
                 }}
               >
-                {v}
+                <Icon name={v} />
+                <span>{v}</span>
               </button>
             ))}
         </nav>
         <footer>
-          LEARNING WITH PURPOSE
-          <br />
-          علم، عمل، حکمت
-          <br />
-          <br />
-          Staff workspace · v1
+          <span className="footer-symbol" aria-hidden="true">
+            ✧
+          </span>
+          <strong>Learning with purpose.</strong>
+          <span lang="ur" dir="rtl">
+            علم، عمل، حکمت
+          </span>
+          <span className="tiny">Hikmah staff workspace</span>
         </footer>
       </aside>
-      <div>
+      <div className="workspace">
         <header>
-          <span>Institute workspace / {view}</span>
-          <div className="row">
-            <span>
-              {me.name} · {admin ? "Administrator" : "Assigned staff"}
+          <span className="breadcrumb">
+            Workspace <span aria-hidden="true">/</span> <strong>{view}</strong>
+          </span>
+          <div className="account">
+            <span className="avatar" aria-hidden="true">
+              {me.name
+                .split(/\s+/)
+                .map((n) => n[0])
+                .slice(0, 2)
+                .join("")}
+            </span>
+            <span className="account-name">
+              {me.name}
+              <small>{admin ? "Administrator" : "Assigned staff"}</small>
             </span>
             <button
-              className="secondary"
+              className="secondary signout"
               onClick={() =>
                 void run(async () => {
                   await api("/api/auth/sign-out", {
@@ -204,27 +245,37 @@ export default function Home() {
                   });
                   setMe(null);
                   setSections([]);
+                  setSection("");
+                  setCycles([]);
+                  setCycle("");
+                  setView("Overview");
                 })
               }
             >
-              Sign out
+              <Icon name="logout" />
+              <span>Sign out</span>
             </button>
           </div>
         </header>
-        <main>
-          <div className="top">
+        <main id="main-content" tabIndex={-1}>
+          <div className={view === "Overview" ? "top overview-top" : "top"}>
             <div>
-              <div className="eyebrow">Hikmah academic management</div>
+              <div className="eyebrow">
+                {view === "Overview"
+                  ? "A LITTLE CLARITY, EVERY DAY"
+                  : "HIKMAH ACADEMIC MANAGEMENT"}
+              </div>
               <h1>
                 {view === "Overview" ? "A clear view of your institute" : view}
               </h1>
               <p>
                 {view === "Overview"
-                  ? "Manage the everyday. Prepare for what comes next."
+                  ? "Your classes, your people, your next steps. All in one place."
                   : "Your assigned records, kept accurate and accountable."}
               </p>
             </div>
-            <span className="tag">
+            <span className="tag date-tag">
+              <Icon name="Attendance" />
               {new Date().toLocaleDateString("en-GB", {
                 day: "numeric",
                 month: "short",
@@ -293,10 +344,28 @@ export default function Home() {
                     "Review",
                     "Approval before publication",
                   ],
-                  ["Connected platforms", "3", "Web · Android · iOS"],
-                ].map(([label, value, note]) => (
+                  [
+                    "Your workspace",
+                    "Connected",
+                    "A shared space for your staff",
+                  ],
+                ].map(([label, value, note], i) => (
                   <div className="card" key={label}>
-                    <div className="label">{label}</div>
+                    <div className="card-top">
+                      <div className="label">{label}</div>
+                      <span className="card-icon">
+                        <Icon
+                          name={
+                            [
+                              "Academic setup",
+                              "Attendance",
+                              "Policies",
+                              "People & access",
+                            ][i]
+                          }
+                        />
+                      </span>
+                    </div>
                     <div className="number">{value}</div>
                     <small>{note}</small>
                   </div>
@@ -308,41 +377,50 @@ export default function Home() {
                     <h2>Your sections</h2>
                     <span className="tag">{sections.length} sections</span>
                   </div>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Section</th>
-                        <th>Code</th>
-                        <th>Next action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sections.map((s) => (
-                        <tr key={s.id}>
-                          <td>
-                            <strong>{s.name}</strong>
-                          </td>
-                          <td>{s.code}</td>
-                          <td>
-                            <button
-                              className="secondary"
-                              onClick={() => {
-                                setSection(s.id);
-                                setView("Attendance");
-                              }}
-                            >
-                              Open attendance →
-                            </button>
-                          </td>
+                  <div
+                    className="tablewrap"
+                    tabIndex={0}
+                    aria-label="Scrollable records"
+                  >
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Section</th>
+                          <th>Code</th>
+                          <th>Next action</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {sections.map((s) => (
+                          <tr key={s.id}>
+                            <td>
+                              <strong>{s.name}</strong>
+                            </td>
+                            <td>{s.code}</td>
+                            <td>
+                              <button
+                                className="secondary"
+                                onClick={() => {
+                                  setSection(s.id);
+                                  setView("Attendance");
+                                }}
+                              >
+                                Open attendance →
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                   {!sections.length && (
                     <p className="empty">No assigned sections.</p>
                   )}
                 </div>
-                <div className="panel">
+                <div className="panel integrity-panel">
+                  <span className="integrity-icon">
+                    <Icon name="Policies" />
+                  </span>
                   <div className="eyebrow">Academic integrity</div>
                   <h2>Every result needs a clear foundation.</h2>
                   <p>
@@ -532,7 +610,7 @@ function Setup({
             </button>
           )}
         </form>
-        <div className="tablewrap">
+        <div className="tablewrap" tabIndex={0} aria-label="Scrollable records">
           <table>
             <thead>
               <tr>
@@ -738,7 +816,7 @@ function Attendance({ section, run, busy, setMessage }: Common) {
             {Object.keys(records).length} of {sheet?.roster.length ?? 0} marked
           </span>
         </div>
-        <div className="tablewrap">
+        <div className="tablewrap" tabIndex={0} aria-label="Scrollable records">
           <table>
             <thead>
               <tr>
@@ -935,26 +1013,28 @@ function Exams({
         {admin && (
           <SchemeEditor value={json} onChange={setJson} section={section} />
         )}
-        <table>
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Paper label (RTL)</th>
-              <th>Maximum</th>
-              <th>Type</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data?.scheme.papers.map((p: any) => (
-              <tr key={p.code}>
-                <td>{p.code}</td>
-                <td dir="rtl">{p.label}</td>
-                <td>{p.max}</td>
-                <td>{p.type}</td>
+        <div className="tablewrap" tabIndex={0} aria-label="Scrollable records">
+          <table>
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Paper label (RTL)</th>
+                <th>Maximum</th>
+                <th>Type</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data?.scheme.papers.map((p: any) => (
+                <tr key={p.code}>
+                  <td>{p.code}</td>
+                  <td dir="rtl">{p.label}</td>
+                  <td>{p.max}</td>
+                  <td>{p.type}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <div className="toolbar" style={{ marginTop: 18 }}>
           {data?.scheme.groups.map((g: any) => (
             <span className="tag" key={g.name}>
@@ -1210,78 +1290,84 @@ function Marks({ run, admin, setMessage }: Common & { admin: boolean }) {
               </>
             )}
           </details>
-          <table>
-            <thead>
-              <tr>
-                <th>Learner</th>
-                <th>State</th>
-                <th>Awarded / {data.paper.max_marks}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.entries.map((e: any, i: number) => (
-                <tr key={e.enrollmentId}>
-                  <td>
-                    {e.full_name}
-                    <br />
-                    <span className="tiny">{e.student_number}</span>
-                  </td>
-                  <td>
-                    <select
-                      aria-label={`Mark state ${e.student_number}`}
-                      value={e.state ?? "PENDING"}
-                      onChange={(event) => {
-                        const entries = [...data.entries];
-                        entries[i] = {
-                          ...e,
-                          state: event.target.value,
-                          awarded:
-                            event.target.value === "GRADED"
-                              ? (e.awarded ?? 0)
-                              : null,
-                        };
-                        setData({ ...data, entries });
-                      }}
-                    >
-                      {[
-                        "PENDING",
-                        "GRADED",
-                        "ABSENT",
-                        "EXEMPT",
-                        "WITHHELD",
-                        "NOT_APPLICABLE",
-                        "UNKNOWN_LEGACY_BLANK",
-                      ].map((s) => (
-                        <option key={s}>{s}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <input
-                      aria-label={`Awarded ${e.student_number}`}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max={data.paper.max_marks}
-                      value={e.awarded ?? ""}
-                      disabled={e.state !== "GRADED"}
-                      onChange={(event) => {
-                        const entries = [...data.entries];
-                        entries[i] = {
-                          ...e,
-                          awarded:
-                            event.target.value === ""
-                              ? null
-                              : Number(event.target.value),
-                        };
-                        setData({ ...data, entries });
-                      }}
-                    />
-                  </td>
+          <div
+            className="tablewrap"
+            tabIndex={0}
+            aria-label="Scrollable records"
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th>Learner</th>
+                  <th>State</th>
+                  <th>Awarded / {data.paper.max_marks}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data.entries.map((e: any, i: number) => (
+                  <tr key={e.enrollmentId}>
+                    <td>
+                      {e.full_name}
+                      <br />
+                      <span className="tiny">{e.student_number}</span>
+                    </td>
+                    <td>
+                      <select
+                        aria-label={`Mark state ${e.student_number}`}
+                        value={e.state ?? "PENDING"}
+                        onChange={(event) => {
+                          const entries = [...data.entries];
+                          entries[i] = {
+                            ...e,
+                            state: event.target.value,
+                            awarded:
+                              event.target.value === "GRADED"
+                                ? (e.awarded ?? 0)
+                                : null,
+                          };
+                          setData({ ...data, entries });
+                        }}
+                      >
+                        {[
+                          "PENDING",
+                          "GRADED",
+                          "ABSENT",
+                          "EXEMPT",
+                          "WITHHELD",
+                          "NOT_APPLICABLE",
+                          "UNKNOWN_LEGACY_BLANK",
+                        ].map((s) => (
+                          <option key={s}>{s}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        aria-label={`Awarded ${e.student_number}`}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={data.paper.max_marks}
+                        value={e.awarded ?? ""}
+                        disabled={e.state !== "GRADED"}
+                        onChange={(event) => {
+                          const entries = [...data.entries];
+                          entries[i] = {
+                            ...e,
+                            awarded:
+                              event.target.value === ""
+                                ? null
+                                : Number(event.target.value),
+                          };
+                          setData({ ...data, entries });
+                        }}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <div className="toolbar" style={{ marginTop: 20 }}>
             <button
               onClick={() =>
@@ -1511,7 +1597,11 @@ function Results({
                 ))}
               </ul>
             </div>
-            <div className="tablewrap">
+            <div
+              className="tablewrap"
+              tabIndex={0}
+              aria-label="Scrollable records"
+            >
               <table>
                 <thead>
                   <tr>
@@ -1667,65 +1757,67 @@ function People({ run, setMessage }: Common) {
         Changes revoke existing sessions immediately. The last active
         administrator cannot be removed.
       </p>
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Status</th>
-            <th>Access</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u.id}>
-              <td>{u.display_name}</td>
-              <td>{u.email}</td>
-              <td>{u.roles.join(", ") || "Assigned staff"}</td>
-              <td>{u.active ? "Active" : "Disabled"}</td>
-              <td>
-                <button
-                  className="secondary"
-                  onClick={() =>
-                    void run(async () => {
-                      await api("/v1/users/" + u.id, {
-                        method: "PATCH",
-                        body: JSON.stringify({
-                          active: !u.active,
-                          admin: u.roles.includes("ADMIN"),
-                        }),
-                      });
-                      await load();
-                      setMessage("Access updated; sessions revoked.");
-                    })
-                  }
-                >
-                  {u.active ? "Disable" : "Activate"}
-                </button>{" "}
-                <button
-                  className="secondary"
-                  onClick={() =>
-                    void run(async () => {
-                      await api("/v1/users/" + u.id, {
-                        method: "PATCH",
-                        body: JSON.stringify({
-                          active: u.active,
-                          admin: !u.roles.includes("ADMIN"),
-                        }),
-                      });
-                      await load();
-                      setMessage("Role updated; sessions revoked.");
-                    })
-                  }
-                >
-                  {u.roles.includes("ADMIN") ? "Revoke admin" : "Grant admin"}
-                </button>
-              </td>
+      <div className="tablewrap" tabIndex={0} aria-label="Scrollable records">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Access</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id}>
+                <td>{u.display_name}</td>
+                <td>{u.email}</td>
+                <td>{u.roles.join(", ") || "Assigned staff"}</td>
+                <td>{u.active ? "Active" : "Disabled"}</td>
+                <td>
+                  <button
+                    className="secondary"
+                    onClick={() =>
+                      void run(async () => {
+                        await api("/v1/users/" + u.id, {
+                          method: "PATCH",
+                          body: JSON.stringify({
+                            active: !u.active,
+                            admin: u.roles.includes("ADMIN"),
+                          }),
+                        });
+                        await load();
+                        setMessage("Access updated; sessions revoked.");
+                      })
+                    }
+                  >
+                    {u.active ? "Disable" : "Activate"}
+                  </button>{" "}
+                  <button
+                    className="secondary"
+                    onClick={() =>
+                      void run(async () => {
+                        await api("/v1/users/" + u.id, {
+                          method: "PATCH",
+                          body: JSON.stringify({
+                            active: u.active,
+                            admin: !u.roles.includes("ADMIN"),
+                          }),
+                        });
+                        await load();
+                        setMessage("Role updated; sessions revoked.");
+                      })
+                    }
+                  >
+                    {u.roles.includes("ADMIN") ? "Revoke admin" : "Grant admin"}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -1738,7 +1830,7 @@ function Audit() {
     <div className="panel">
       <h2>Audit history</h2>
       <p>Most recent 200 events. Audit rows are append-only.</p>
-      <div className="tablewrap">
+      <div className="tablewrap" tabIndex={0} aria-label="Scrollable records">
         <table>
           <thead>
             <tr>
@@ -2156,7 +2248,11 @@ function MultiDayGrid({
             Submitted and locked days are read-only. Saving requires explicit
             confirmation and applies every editable date in one transaction.
           </p>
-          <div className="tablewrap">
+          <div
+            className="tablewrap"
+            tabIndex={0}
+            aria-label="Scrollable records"
+          >
             <table>
               <thead>
                 <tr>
@@ -2560,7 +2656,7 @@ function SchemeEditor({
         Changes remain local until saved as a draft or submitted as a reviewed
         revision. Repeated labels are allowed. Codes identify distinct papers.
       </p>
-      <div className="tablewrap">
+      <div className="tablewrap" tabIndex={0} aria-label="Scrollable records">
         <table>
           <thead>
             <tr>

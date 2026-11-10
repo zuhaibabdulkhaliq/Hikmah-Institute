@@ -4,6 +4,8 @@ A TypeScript workspace with a Next.js staff portal, an Expo Android/iOS app, a F
 
 The implementation includes academic configuration, scoped staff assignments, synthetic enrollment, daily/grid attendance, teacher paper marks, explicit academic policy approval, result preflight, immutable publication revisions, Urdu PDF exports, staff invitation/activation, CSV import and encrypted backup tools. See [the delivery record](docs/IMPLEMENTATION_STATUS.md) for verification and limitations. This is **not yet approved for real student rollout**.
 
+The staff portal uses a blue-and-white glass theme with rounded surfaces, responsive tables and keyboard navigation; Expo uses the same palette and rounded controls. See [the visual update notes](docs/UI_THEME.md), including how to use the original institute logo.
+
 ## Docker-only local demo
 
 For Apple silicon Macs (M1/M2/M3/M4, including M4 Pro), follow [the Mac execution guide](docs/MACOS-APPLE-SILICON.md). Homebrew and a host Node installation are not required for the web/API/database demo.

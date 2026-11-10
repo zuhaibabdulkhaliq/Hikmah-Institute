@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { colors, radii } from "@hikmah/ui-tokens";
 import {
   View,
   Text,
@@ -25,6 +27,7 @@ const api = createClient(base, () =>
 );
 const statuses = ["PRESENT", "ABSENT", "LATE", "LEAVE"];
 export default function Home() {
+  const insets = useSafeAreaInsets();
   const [me, setMe] = useState<Identity | null>(null),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
@@ -110,11 +113,19 @@ export default function Home() {
     <Pressable
       disabled={busy}
       accessibilityRole="button"
+      accessibilityState={{ disabled: busy }}
       onPress={onPress}
-      style={[styles.button, secondary && styles.secondary]}
+      style={({ pressed }) => [
+        styles.button,
+        secondary && styles.secondary,
+        (busy || pressed) && styles.dimmed,
+      ]}
     >
       <Text
-        style={{ color: secondary ? "#185941" : "white", fontWeight: "600" }}
+        style={{
+          color: secondary ? colors.primary : "white",
+          fontWeight: "600",
+        }}
       >
         {title}
       </Text>
@@ -123,8 +134,17 @@ export default function Home() {
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={{ padding: 24, paddingTop: 64 }}
+      contentContainerStyle={{
+        padding: 22,
+        paddingTop: insets.top + 24,
+        paddingBottom: insets.bottom + 24,
+      }}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     >
+      <View style={styles.brandMark}>
+        <Text style={styles.brandGlyph}>علم</Text>
+      </View>
       <Text style={styles.overline}>HIKMAH INSTITUTE</Text>
       <Text style={styles.heading}>
         {me ? "Your class, at a glance" : "Welcome back"}
@@ -134,7 +154,12 @@ export default function Home() {
           ? `${me.name} · ${ameer ? "Class Ameer" : "Teaching staff"}`
           : "Sign in to your staff workspace"}
       </Text>
-      {busy && <ActivityIndicator color="#185941" />}
+      {busy && (
+        <ActivityIndicator
+          color={colors.primary}
+          accessibilityLabel="Working"
+        />
+      )}
       {!!error && (
         <Text accessibilityRole="alert" style={styles.error}>
           {error}
@@ -145,6 +170,8 @@ export default function Home() {
           <TextInput
             style={styles.input}
             placeholder="Email"
+            accessibilityLabel="Email address"
+            placeholderTextColor={colors.muted}
             autoCapitalize="none"
             keyboardType="email-address"
             value={email}
@@ -153,6 +180,8 @@ export default function Home() {
           <TextInput
             style={styles.input}
             placeholder="Password"
+            accessibilityLabel="Password"
+            placeholderTextColor={colors.muted}
             secureTextEntry
             value={password}
             onChangeText={setPassword}
@@ -328,7 +357,9 @@ export default function Home() {
                         <Text
                           style={{
                             color:
-                              records[r.id] === status ? "white" : "#185941",
+                              records[r.id] === status
+                                ? "white"
+                                : colors.primary,
                           }}
                         >
                           {status === "PRESENT"
@@ -454,7 +485,7 @@ export default function Home() {
                             color:
                               (m.state ?? "PENDING") === state
                                 ? "white"
-                                : "#185941",
+                                : colors.primary,
                           }}
                         >
                           {state}
@@ -546,67 +577,97 @@ export default function Home() {
   );
 }
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#f4f5ef" },
+  screen: { flex: 1, backgroundColor: colors.paper },
+  brandMark: {
+    width: 52,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: colors.secondary,
+    borderWidth: 1,
+    borderColor: "white",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  brandGlyph: { color: colors.primary, fontSize: 25 },
   overline: {
     fontSize: 11,
     letterSpacing: 3,
-    color: "#96723f",
+    color: colors.primary,
     marginBottom: 14,
   },
-  heading: { fontSize: 30, color: "#193a30", fontWeight: "600" },
+  heading: {
+    fontSize: 32,
+    letterSpacing: -0.8,
+    color: colors.ink,
+    fontWeight: "600",
+  },
   subtitle: {
     fontSize: 13,
-    color: "#6b7c74",
+    color: colors.muted,
     marginVertical: 14,
     lineHeight: 21,
   },
   label: {
     fontSize: 11,
-    color: "#6b7c74",
+    color: colors.muted,
     letterSpacing: 1,
     marginTop: 24,
     marginBottom: 10,
   },
   input: {
-    backgroundColor: "white",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#cbd7cd",
-    borderRadius: 8,
+    borderColor: colors.line,
+    borderRadius: radii.control,
+    color: colors.ink,
     padding: 14,
     marginBottom: 14,
     minHeight: 48,
   },
   button: {
-    backgroundColor: "#185941",
+    backgroundColor: colors.primary,
     padding: 15,
-    borderRadius: 8,
+    borderRadius: radii.control,
     minHeight: 48,
     alignItems: "center",
     marginBottom: 10,
   },
-  secondary: { backgroundColor: "#e3ebdf" },
+  secondary: {
+    backgroundColor: colors.secondary,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  dimmed: { opacity: 0.55 },
   row: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   card: {
-    backgroundColor: "white",
+    backgroundColor: colors.surface,
     padding: 18,
     borderWidth: 1,
-    borderColor: "#dce3dc",
-    borderRadius: 10,
+    borderColor: "white",
+    borderRadius: radii.card,
+    boxShadow: "0 5px 20px rgba(39, 94, 139, 0.06)",
     marginBottom: 12,
   },
-  name: { color: "#193a30", fontSize: 16, marginBottom: 14 },
+  name: {
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 14,
+  },
   status: {
     minWidth: 52,
     minHeight: 48,
     padding: 14,
-    borderRadius: 6,
-    backgroundColor: "#edf1e9",
+    borderRadius: radii.control,
+    backgroundColor: colors.secondary,
     alignItems: "center",
   },
-  selected: { backgroundColor: "#185941" },
+  selected: { backgroundColor: colors.primary },
   error: {
-    backgroundColor: "#f7e3df",
-    color: "#943f34",
+    backgroundColor: colors.dangerSurface,
+    color: colors.danger,
+    borderRadius: radii.control,
     padding: 14,
     marginVertical: 12,
   },

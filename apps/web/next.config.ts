@@ -1,5 +1,14 @@
 import type { NextConfig } from "next";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 const config: NextConfig = {
+  env: {
+    NEXT_PUBLIC_HIKMAH_HAS_LOGO: existsSync(
+      resolve(process.cwd(), "public/hikmah-logo.png"),
+    )
+      ? "true"
+      : "false",
+  },
   transpilePackages: ["@hikmah/api-client", "@hikmah/domain"],
   poweredByHeader: false,
   async rewrites() {

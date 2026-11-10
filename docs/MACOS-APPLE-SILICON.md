@@ -118,6 +118,22 @@ The web port is bound to the Mac's loopback address. This setup is for local syn
 
 The Expo app is in `apps/mobile`; the Docker demo does not start Metro, an iOS simulator or an Android emulator. Native development is a separate setup requiring host Node/pnpm and a compatible Expo runtime, Xcode for iOS and/or Android Studio for Android. Official installers can be used without Homebrew. See the [README mobile instructions](../README.md#mobile) for API reachability requirements.
 
+## Updating an existing demo
+
+Keep your original `.env.demo` and Docker database volume. If using Git in a clean checkout on `master`, stop the services, run `git pull --ff-only origin master`, then run `bash scripts/demo.sh start` to rebuild and restart. For ZIP downloads, stop the services and rename the old project folder before extracting a fresh ZIP. Copy its original `.env.demo` into the new project folder before starting; Command-Shift-Period in Finder reveals hidden files. Do not generate different credentials for the retained database.
+
+## Use your original logo
+
+The web app detects `apps/web/public/hikmah-logo.png` at build time. If your original PNG is in Downloads, run these commands from the project folder:
+
+```sh
+mkdir -p apps/web/public
+cp "$HOME/Downloads/Hikmah Logo.png" apps/web/public/hikmah-logo.png
+bash scripts/demo.sh start
+```
+
+This copies your exact image without altering it and rebuilds the application to use it. The `/Users/.../Downloads/` path provided in chat was not available in the cloud workspace, so the original PNG is not included in the GitHub update. Without that file the app shows a simple academic mark beside the institute name. This web asset setting does not replace the separate Expo app icon or published PDF branding.
+
 For a hosted installation, follow [deployment and recovery](DEPLOYMENT.md) and the remaining acceptance checks in [the implementation record](IMPLEMENTATION_STATUS.md). The local demo command does not deploy a public site. The institute's policies, staging/security/recovery checks and native-device acceptance remain separate rollout requirements.
 
 ## Verification scope
