@@ -4,6 +4,12 @@ Date: 6 November 2026. Original authority: `Hikmah_Final_Blueprint/agent/BUILD_T
 
 This is a working implementation of the core academic workflow across the requested stack. **It is not a declaration that every release gate or all 22 acceptance criteria have passed.** Native device E2E, institute sign-off, production operational validation and the implementation differences below remain outstanding.
 
+## Local execution update — 10 November 2026
+
+The Docker-only demo now has dedicated [Apple silicon/M4 instructions](MACOS-APPLE-SILICON.md) and an [older Intel/Ventura guide](MACOS-VENTURA.md). `scripts/demo.sh` provides start, test, status, logs and stop commands; startup applies migrations and seeds synthetic data. Private generated credentials stay in ignored `.env.demo`, and stopping retains the separate demo database volume. The test command rebuilds current source before running checks.
+
+The updated Docker workflow passed lint, root/web/mobile type checks, all 27 database/PDF/domain tests, and the web/API production builds on the managed Linux x86_64 Docker engine. Repeat initialization preserved the private credentials and their file mode was 0600. The Node and PostgreSQL registry manifests both include Linux ARM64 images. Physical M4/macOS execution, native-device E2E and the live-rollout gates below remain unverified or outstanding; no institute policy is approved by this demo setup.
+
 ## Milestone record
 
 | Milestone          | Implemented                                                                                                                                                                                                                                                                             | Verification and remaining work                                                                                                                                                                                                                     |

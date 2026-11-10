@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-command -v docker >/dev/null || { printf 'Docker is not installed. See docs/MACOS-VENTURA.md.\n' >&2; exit 1; }
+command -v docker >/dev/null || { printf 'Docker is not installed. See the Docker-only local demo section in README.md.\n' >&2; exit 1; }
 docker compose version >/dev/null
 docker info >/dev/null 2>&1 || { printf 'Start Docker Desktop, wait for its engine, then run this command again.\n' >&2; exit 1; }
 compose=(docker compose --project-name "${HIKMAH_DEMO_PROJECT:-hikmah-demo}" --env-file .env.demo -f compose.demo.yaml)
@@ -24,7 +24,7 @@ case "${1:-start}" in
     ;;
   test)
     init
-    if ! docker image inspect hikmah-demo:local >/dev/null 2>&1; then build; fi
+    build
     "${compose[@]}" up -d --wait db
     "${compose[@]}" run --rm --no-deps -e NODE_ENV=production api node_modules/.bin/pnpm check
     ;;
