@@ -215,7 +215,7 @@ test("Milestones C–E: complete attendance, stale versions, atomic retries, pub
       credits: {
         PRESENT: { earned: 1, possible: 1 },
         ABSENT: { earned: 0, possible: 1 },
-        LATE: { earned: 0.5, possible: 1 },
+        HALF: { earned: 0.5, possible: 1 },
         LEAVE: { earned: 0, possible: 0 },
       },
       zeroDenominator: "BLOCK",
@@ -223,13 +223,13 @@ test("Milestones C–E: complete attendance, stale versions, atomic retries, pub
       decimals: 1,
     },
     grades: [
-      { label: "TEST ONLY Fail", min: 0, max: 50, pass: false },
-      { label: "TEST ONLY Pass", min: 50, max: 101, pass: true },
+      { label: "TEST ONLY Fail", min: 0, max: 40, pass: false },
+      { label: "TEST ONLY Pass", min: 40, max: 101, pass: true },
     ],
     eligibility: "ANY_ENROLLED_IN_WINDOW",
-    ranking: { tie: "COMPETITION", topN: 3, onlyPassing: false },
+    ranking: { tie: "COMPETITION", topN: 3, onlyPassing: true },
     missing: { absent: "BLOCK", exempt: "BLOCK" },
-    passMinimumPercent: 50,
+    passMinimumPercent: 40,
     paperMinimumPercent: null,
     rounding: "HALF_UP",
   };
@@ -677,18 +677,20 @@ test("R01/R02/R11/R17: editable academic structure, three papers across two sect
   });
   assert.equal(expired.statusCode, 200, expired.body);
   const scheme = {
-    papers: [
-      {
-        offeringId: offering.json().id,
-        code: "B04",
-        label: "Test paper B",
-        max: 66,
-        type: "WRITTEN",
-        pattern: "",
-        date: null,
-      },
-    ],
-    groups: [{ name: "Test group B", max: 66, paperCodes: ["B04"] }],
+    papers: Array.from({ length: 6 }, (_, i) => ({
+      offeringId: offering.json().id,
+      code: "B04_" + i,
+      label: "Test paper B " + i,
+      max: 11,
+      type: "WRITTEN",
+      pattern: "",
+      date: null,
+    })),
+    groups: Array.from({ length: 6 }, (_, i) => ({
+      name: "Test group B " + i,
+      max: 11,
+      paperCodes: ["B04_" + i],
+    })),
   };
   let r = await call(
     "PUT",
@@ -706,7 +708,7 @@ test("R01/R02/R11/R17: editable academic structure, three papers across two sect
   const visible = (
     await call("GET", "/v1/assessments", undefined, teacher)
   ).json();
-  assert.equal(visible.length, 3);
+  assert.equal(visible.length, 8);
   assert.equal(new Set(visible.map((p: any) => p.section_id)).size, 2);
   const paper = visible.find((p: any) => p.section_id === section);
   r = await call(

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "./auth.ts";
 import type { FastifyRequest } from "fastify";
@@ -49,16 +50,21 @@ export async function scope(
   db: DB,
   a: Actor,
   section: string,
-  kind: "read" | "attendance" | "results" = "read",
+  kind:
+    | "read"
+    | "attendance"
+    | "attendanceRead"
+    | "results"
+    | "manage" = "read",
 ) {
   const exists = await db.query(
-    `SELECT s.id FROM sections s JOIN academic_years y ON y.id=s.academic_year_id WHERE s.id=$1 AND s.organization_id=$2 AND ($3<>'attendance' OR y.state='ACTIVE')`,
+    `SELECT s.id FROM sections s JOIN academic_years y ON y.id=s.academic_year_id WHERE s.id=$1 AND s.organization_id=$2 AND ($3<>'attendance' OR y.state='ACTIVE') AND ($3<>'manage' OR y.state IN ('PLANNED','ACTIVE'))`,
     [section, a.org, kind],
   );
   check(exists.rowCount, "Section unavailable", 404);
   if (a.admin) return;
   const result = await db.query(
-    `SELECT 1 FROM section_staff_assignments WHERE section_id=$1 AND user_id=$2 AND active=true AND starts_on<=$4::date AND (ends_on IS NULL OR ends_on>=$4::date) AND ($3<>'results' OR role='CLASS_TEACHER') UNION ALL SELECT 1 FROM subject_teacher_assignments t JOIN section_subjects s ON s.id=t.section_subject_id WHERE s.section_id=$1 AND t.teacher_user_id=$2 AND t.starts_on<=$4::date AND (t.ends_on IS NULL OR t.ends_on>=$4::date) AND $3='read'`,
+    `SELECT 1 FROM section_staff_assignments WHERE section_id=$1 AND user_id=$2 AND active=true AND starts_on<=$4::date AND (ends_on IS NULL OR ends_on>=$4::date) AND ($3 NOT IN ('results','manage') OR role IN ('CLASS_TEACHER','MUSHRIF')) UNION ALL SELECT 1 FROM subject_teacher_assignments t JOIN section_subjects s ON s.id=t.section_subject_id WHERE s.section_id=$1 AND t.teacher_user_id=$2 AND t.starts_on<=$4::date AND (t.ends_on IS NULL OR t.ends_on>=$4::date) AND $3='read'`,
     [section, a.id, kind, a.today],
   );
   check(result.rowCount, "Section access denied", 403);
@@ -89,4 +95,43 @@ export async function audit(
       reason ?? null,
     ],
   );
+}
+
+export async function manage(db: DB, a: Actor, section: string) {
+  return scope(db, a, section, "manage");
+}
+export async function capabilities(db: DB, a: Actor) {
+  const sectionRows = (
+    await db.query(
+      `SELECT t.section_id,t.role FROM section_staff_assignments t JOIN sections s ON s.id=t.section_id WHERE s.organization_id=$3 AND t.user_id=$1 AND t.active AND t.starts_on<=$2::date AND (t.ends_on IS NULL OR t.ends_on>=$2::date)`,
+      [a.id, a.today, a.org],
+    )
+  ).rows;
+  const teaching = (
+    await db.query(
+      `SELECT s.section_id,s.id AS offering_id FROM subject_teacher_assignments t JOIN section_subjects s ON s.id=t.section_subject_id JOIN sections c ON c.id=s.section_id WHERE c.organization_id=$3 AND t.teacher_user_id=$1 AND t.starts_on<=$2::date AND (t.ends_on IS NULL OR t.ends_on>=$2::date)`,
+      [a.id, a.today, a.org],
+    )
+  ).rows;
+  const permissionKey = JSON.stringify({
+    admin: a.admin,
+    classes: sectionRows.map((r) => [r.section_id, r.role]).sort(),
+    offerings: teaching.map((r) => r.offering_id).sort(),
+  });
+  return {
+    accessVersion: createHash("sha256").update(permissionKey).digest("hex"),
+    managedSections: [
+      ...new Set(
+        sectionRows
+          .filter((r) => ["MUSHRIF", "CLASS_TEACHER"].includes(r.role))
+          .map((r) => r.section_id),
+      ),
+    ] as string[],
+    attendanceSections: [
+      ...new Set(sectionRows.map((r) => r.section_id)),
+    ] as string[],
+    teachingSections: [
+      ...new Set(teaching.map((r) => r.section_id)),
+    ] as string[],
+  };
 }

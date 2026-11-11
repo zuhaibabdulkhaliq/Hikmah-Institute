@@ -6,6 +6,8 @@ The implementation includes academic configuration, scoped staff assignments, sy
 
 The staff portal uses a blue-and-white glass theme with rounded surfaces, responsive tables and keyboard navigation; Expo uses the same palette and rounded controls. See [the visual update notes](docs/UI_THEME.md), including how to use the original institute logo.
 
+The [current academic rules and workflows](docs/ACADEMIC_RULES.md) document Present/Absent/Half/Leave, Mushrif and subject-teacher access, the 40% pass rule, timely >80% top-three shared positions, calendars, curricula and student history.
+
 ## Docker-only local demo
 
 For Apple silicon Macs (M1/M2/M3/M4, including M4 Pro), follow [the Mac execution guide](docs/MACOS-APPLE-SILICON.md). Homebrew and a host Node installation are not required for the web/API/database demo.
@@ -40,14 +42,16 @@ pnpm dev
 
 The web portal runs on port 3000 and the API on 3001. `.env` contains a randomly generated `DEMO_PASSWORD`; read it locally and use it with any of these **synthetic local-only accounts**:
 
-| Email                    | Access                                       |
-| ------------------------ | -------------------------------------------- |
-| `admin@hikmah.example`   | Administrator                                |
-| `admin2@hikmah.example`  | Second administrator                         |
-| `teacher@hikmah.example` | Class teacher of A; paper teacher of P01–P03 |
-| `ameer@hikmah.example`   | Attendance in Section A only                 |
+| Email                    | Access                                  |
+| ------------------------ | --------------------------------------- |
+| `admin@hikmah.example`   | Administrator                           |
+| `admin2@hikmah.example`  | Second administrator                    |
+| `teacher@hikmah.example` | Subject teacher of P01–P03 (fresh demo) |
+| `ameer@hikmah.example`   | Attendance in Section A only            |
 
-The seed refuses production mode, is repeatable, and creates 9 editable levels, 2 sections, 20 synthetic learners, 3 cycles, 11 papers and 6 proposed groups. The first two learners reproduce the supplied numeric fixtures. The other 18 have no marks. No grade thresholds, attendance credits, backdate permissions or ranking policies are approved automatically. There is no shared hardcoded password.
+`mushrif@hikmah.example` manages all of Section A; `subject@hikmah.example` demonstrates subject-only access on both fresh and upgraded demos. Existing assignments on retained demo volumes are preserved.
+
+The seed refuses production mode, is repeatable, and creates 9 editable levels, 2 sections, 20 synthetic learners, 3 cycles, 11 papers and 6 proposed groups. The first two learners reproduce the supplied numeric fixtures. The other 18 have no marks. The confirmed attendance credits are installed, and the declared 40%/position rules are proposed for administrator review. Calendar dates, session windows, schemes and the complete official policy still need configuration/approval. There is no shared hardcoded password.
 
 The prepared cloud instance already has dependencies, PostgreSQL and a PDF Python environment at `/workspace/.hikmah-tools/venv/bin/python`. Its existing `.env` points there. No environment configuration was republished by this coding task. If the shell's pnpm launcher points to a different release, use `/workspace/.toolchain/node_modules/.bin/pnpm` in this cloud instance.
 

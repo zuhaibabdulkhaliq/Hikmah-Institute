@@ -1238,3 +1238,57 @@ input::file-selector-button {
   background: #fff;
   border-color: #fff;
 }
+.quick-actions {
+  display: grid;
+  gap: 10px;
+}
+.quick-actions button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: start;
+}
+.quick-actions button .icon:last-child {
+  margin-left: auto;
+}
+fieldset {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin: 0 0 18px;
+  padding: 16px;
+}
+legend {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 0 8px;
+}
+.check-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.weekday-picker {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.weekday-picker .check-label {
+  margin-bottom: 0;
+}
+.wide-field {
+  grid-column: 1 / -1;
+}
+.action-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border-radius: 14px;
+  border: 1px solid #c8dae8;
+  background: #edf5fc;
+  padding: 10px 14px;
+  text-decoration: none;
+  font-size: 12px;
+}

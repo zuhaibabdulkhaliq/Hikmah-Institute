@@ -2,7 +2,15 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { createHash } from "node:crypto";
 import { pool, transaction, type DB } from "./db.ts";
-import { actor, admin, check, scope, audit, type Actor } from "./security.ts";
+import {
+  actor,
+  check,
+  scope,
+  audit,
+  manage,
+  capabilities,
+  type Actor,
+} from "./security.ts";
 import {
   attendanceDay,
   schoolDate,
@@ -52,9 +60,13 @@ export async function replay(
   ]);
   return response;
 }
-async function editDate(db: DB, a: Actor, date: string) {
+async function editDate(db: DB, a: Actor, date: string, section: string) {
   check(date <= a.today, "Future attendance prohibited");
-  if (!a.admin && date < a.today) {
+  if (
+    !a.admin &&
+    !(await capabilities(db, a)).managedSections.includes(section) &&
+    date < a.today
+  ) {
     const result = await db.query(
       "SELECT CASE WHEN config ? 'approvedEditWindow' THEN config->'approvedEditWindow'->>'days' ELSE config->'approvedPolicy'->'attendance'->>'backdateDays' END AS days FROM organization_settings WHERE organization_id=$1",
       [a.org],
@@ -87,7 +99,7 @@ async function save(
     calendar.rowCount,
     "Date must be an attendance-counting instructional day",
   );
-  await editDate(db, a, day.schoolDate);
+  await editDate(db, a, day.schoolDate, section);
   const old = (
     await db.query(
       "SELECT * FROM attendance_sheets WHERE section_id=$1 AND school_date=$2 FOR UPDATE",
@@ -132,7 +144,7 @@ export function attendance(app: FastifyInstance) {
   app.get("/v1/sections/:id/calendar", async (req) => {
     const a = await actor(req),
       id = uuid.parse((req.params as any).id);
-    await scope(pool, a, id);
+    await scope(pool, a, id, "attendanceRead");
     const q = z
       .object({
         from: schoolDate.optional(),
@@ -149,9 +161,8 @@ export function attendance(app: FastifyInstance) {
   });
   app.put("/v1/sections/:id/calendar", async (req) => {
     const a = await actor(req);
-    admin(a);
     const id = uuid.parse((req.params as any).id);
-    await scope(pool, a, id);
+    await manage(pool, a, id);
     const d = z
       .array(
         z.object({
@@ -165,6 +176,19 @@ export function attendance(app: FastifyInstance) {
       .max(366)
       .parse(req.body);
     return transaction(async (db) => {
+      const year = (
+        await db.query(
+          "SELECT y.start_date::text,y.end_date::text FROM academic_years y JOIN sections s ON s.academic_year_id=y.id WHERE s.id=$1",
+          [id],
+        )
+      ).rows[0];
+      check(
+        d.every(
+          (v) =>
+            v.schoolDate >= year.start_date && v.schoolDate <= year.end_date,
+        ),
+        "Calendar dates must be within the academic year",
+      );
       for (const v of d)
         await db.query(
           "INSERT INTO section_calendar_days(section_id,school_date,is_instructional,counts_for_attendance,calendar_note) VALUES($1,$2,$3,$4,$5) ON CONFLICT(section_id,school_date) DO UPDATE SET is_instructional=$3,counts_for_attendance=$4,calendar_note=$5",
@@ -231,7 +255,7 @@ export function attendance(app: FastifyInstance) {
       date = schoolDate.parse((req.params as any).date);
     return transaction(async (db) => {
       await scope(db, a, id, "attendance");
-      await editDate(db, a, date);
+      await editDate(db, a, date, id);
       const s = (
         await db.query(
           "SELECT * FROM attendance_sheets WHERE section_id=$1 AND school_date=$2 FOR UPDATE",
@@ -267,14 +291,13 @@ export function attendance(app: FastifyInstance) {
   });
   app.post("/v1/sections/:id/attendance/:date/reopen", async (req) => {
     const a = await actor(req);
-    admin(a);
     const id = uuid.parse((req.params as any).id),
       date = schoolDate.parse((req.params as any).date);
     const { reason } = z
       .object({ reason: z.string().min(5).max(1000) })
       .parse(req.body);
     return transaction(async (db) => {
-      await scope(db, a, id);
+      await manage(db, a, id);
       const r = await db.query(
         "UPDATE attendance_sheets SET state='DRAFT',version=version+1 WHERE section_id=$1 AND school_date=$2 RETURNING id",
         [id, date],

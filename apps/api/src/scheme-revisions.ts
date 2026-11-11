@@ -1,14 +1,14 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { transaction } from "./db.ts";
-import { actor, admin, scope, check, audit } from "./security.ts";
+import { actor, manage, check, audit } from "./security.ts";
+import { assertCurriculum } from "./exams.ts";
 import { schemeSchema, uuid } from "../../../packages/domain/src/index.ts";
 export function schemeRevisions(app: FastifyInstance) {
   app.post(
     "/v1/exam-cycles/:cycle/sections/:section/scheme/revise",
     async (req) => {
       const a = await actor(req);
-      admin(a);
       const cycle = uuid.parse((req.params as any).cycle),
         section = uuid.parse((req.params as any).section);
       const d = z
@@ -19,7 +19,8 @@ export function schemeRevisions(app: FastifyInstance) {
         })
         .parse(req.body);
       return transaction(async (db) => {
-        await scope(db, a, section, "results");
+        await manage(db, a, section);
+        await assertCurriculum(db, section, d.scheme, cycle);
         const setting = (
           await db.query(
             "SELECT * FROM exam_section_settings WHERE exam_cycle_id=$1 AND section_id=$2 FOR UPDATE",
@@ -81,7 +82,7 @@ export function schemeRevisions(app: FastifyInstance) {
             );
           if (d.copyMarks)
             await db.query(
-              `INSERT INTO marks(assessment_id,enrollment_id,entry_state,awarded,entered_by,entered_at,change_reason) SELECT $1,m.enrollment_id,m.entry_state,m.awarded,$2,now(),$3 FROM marks m JOIN exam_assessments p ON p.id=m.assessment_id JOIN section_subjects o ON o.id=p.section_subject_id WHERE p.exam_cycle_id=$4 AND o.section_id=$5 AND p.exam_scheme_revision=$6 AND p.paper_code=$7`,
+              `INSERT INTO marks(assessment_id,enrollment_id,entry_state,awarded,entered_by,entered_at,change_reason,on_leave,on_time) SELECT $1,m.enrollment_id,m.entry_state,m.awarded,$2,now(),$3,m.on_leave,m.on_time FROM marks m JOIN exam_assessments p ON p.id=m.assessment_id JOIN section_subjects o ON o.id=p.section_subject_id WHERE p.exam_cycle_id=$4 AND o.section_id=$5 AND p.exam_scheme_revision=$6 AND p.paper_code=$7`,
               [
                 paper.id,
                 a.id,

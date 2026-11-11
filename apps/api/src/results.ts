@@ -4,7 +4,15 @@ import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import Decimal from "decimal.js";
 import { pool, transaction, type DB } from "./db.ts";
-import { actor, admin, scope, check, audit, type Actor } from "./security.ts";
+import {
+  actor,
+  scope,
+  check,
+  audit,
+  manage,
+  capabilities,
+  type Actor,
+} from "./security.ts";
 import { loadScheme } from "./exams.ts";
 import { eligible, replay } from "./attendance.ts";
 import {
@@ -16,6 +24,7 @@ import {
   uuid,
   csvCell,
   type Mark,
+  positionEligibility,
 } from "../../../packages/domain/src/index.ts";
 const hash = (v: unknown) =>
   createHash("sha256")
@@ -142,6 +151,8 @@ async function preflight(db: DB, a: Actor, cycle: string, section: string) {
         {
           state: m.entry_state,
           awarded: m.awarded === null ? null : Number(m.awarded),
+          onLeave: m.on_leave,
+          onTime: m.on_time,
         },
       ]),
     );
@@ -154,10 +165,18 @@ async function preflight(db: DB, a: Actor, cycle: string, section: string) {
       errors.push(`${e.student_number}: ${result.errors.join(", ")}`);
     if (own.some((m) => !m.submitted_at || !m.paper_approved))
       errors.push(`${e.student_number}: marks require submission and approval`);
+    const ownAttendance = attendanceRows.filter(
+      (r) => r.enrollment_id === e.id,
+    );
+    if (ownAttendance.some((r) => r.status === "LATE"))
+      errors.push(
+        `${e.student_number}: legacy LATE records require explicit reconciliation; they are not Half`,
+      );
     const att = policy.success
       ? attendancePercent(
           attendanceRows
             .filter((r) => r.enrollment_id === e.id)
+            .filter((r) => r.status !== "LATE")
             .map((r) => r.status),
           policy.data.attendance,
         )
@@ -177,6 +196,14 @@ async function preflight(db: DB, a: Actor, cycle: string, section: string) {
       : Decimal.ROUND_HALF_UP;
     return {
       enrollmentId: e.id,
+      studentId: e.student_id,
+      onTimeEligible: scheme.success && positionEligibility(scheme.data, map),
+      positionReason:
+        scheme.success && positionEligibility(scheme.data, map)
+          ? result?.percent != null && new Decimal(result.percent).lte(80)
+            ? "More than 80% is required"
+            : null
+          : "Every paper must be graded on time without exam leave",
       name: e.full_name,
       studentNumber: e.student_number,
       roll: e.roll_number,
@@ -194,6 +221,10 @@ async function preflight(db: DB, a: Actor, cycle: string, section: string) {
         : null,
       attendance: {
         ...att,
+        present: ownAttendance.filter((r) => r.status === "PRESENT").length,
+        absent: ownAttendance.filter((r) => r.status === "ABSENT").length,
+        half: ownAttendance.filter((r) => r.status === "HALF").length,
+        leave: ownAttendance.filter((r) => r.status === "LEAVE").length,
         displayPercent:
           att.percent !== null && policy.success
             ? new Decimal(att.percent).toFixed(
@@ -277,9 +308,9 @@ export function results(app: FastifyInstance) {
   });
   app.post("/v1/results/:cycle/:section/publish", async (req, reply) => {
     const a = await actor(req);
-    admin(a);
     const cycle = uuid.parse((req.params as any).cycle),
       section = uuid.parse((req.params as any).section);
+    await manage(pool, a, section);
     const d = z
       .object({
         validationHash: z.string().length(64),
@@ -459,6 +490,8 @@ export function results(app: FastifyInstance) {
   });
   app.get("/v1/results", async (req) => {
     const a = await actor(req);
+    const c = await capabilities(pool, a);
+    check(a.admin || c.managedSections.length, "Result access denied", 403);
     const runs = (
       await pool.query(
         "SELECT id,section_id,revision,state,published_at,document_snapshot->'students' AS students FROM result_runs ORDER BY published_at DESC LIMIT 200",
@@ -527,6 +560,11 @@ export function results(app: FastifyInstance) {
         s.grade,
         s.rank,
         s.passing,
+        s.attendance?.present,
+        s.attendance?.absent,
+        s.attendance?.half,
+        s.attendance?.leave,
+        s.attendance?.displayPercent,
       ]
         .map(csvCell)
         .join(","),
@@ -538,7 +576,7 @@ export function results(app: FastifyInstance) {
       .send(
         "\uFEFF" +
           [
-            "student_number,name,total,possible,percent,grade,rank,passing",
+            "student_number,name,total,possible,percent,grade,rank,passing,present,absent,half,leave,attendance_percent",
             ...rows,
           ].join("\r\n"),
       );

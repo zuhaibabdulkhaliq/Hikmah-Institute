@@ -1,7 +1,16 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { pool, transaction, type DB } from "./db.ts";
-import { actor, admin, check, scope, audit, type Actor } from "./security.ts";
+import {
+  actor,
+  admin,
+  check,
+  scope,
+  audit,
+  manage,
+  capabilities,
+  type Actor,
+} from "./security.ts";
 import {
   schemeSchema,
   markInput,
@@ -43,7 +52,7 @@ export async function loadScheme(db: DB, cycle: string, section: string) {
 export async function paperScope(db: DB, a: Actor, id: string) {
   const p = (
     await db.query(
-      "SELECT a.*,s.section_id FROM exam_assessments a JOIN section_subjects s ON s.id=a.section_subject_id WHERE a.id=$1",
+      "SELECT a.*,s.section_id,y.state AS year_state FROM exam_assessments a JOIN section_subjects s ON s.id=a.section_subject_id JOIN sections c ON c.id=s.section_id JOIN academic_years y ON y.id=c.academic_year_id WHERE a.id=$1",
       [id],
     )
   ).rows[0];
@@ -51,8 +60,8 @@ export async function paperScope(db: DB, a: Actor, id: string) {
   await scope(db, a, p.section_id);
   if (!a.admin) {
     const r = await db.query(
-      "SELECT 1 FROM subject_teacher_assignments WHERE section_subject_id=$1 AND teacher_user_id=$2 AND starts_on<=$3::date AND (ends_on IS NULL OR ends_on>=$3::date)",
-      [p.section_subject_id, a.id, a.today],
+      "SELECT 1 FROM subject_teacher_assignments WHERE section_subject_id=$1 AND teacher_user_id=$2 AND starts_on<=$3::date AND (ends_on IS NULL OR ends_on>=$3::date) UNION ALL SELECT 1 FROM section_staff_assignments WHERE section_id=$4 AND user_id=$2 AND active AND role IN ('MUSHRIF','CLASS_TEACHER') AND starts_on<=$3::date AND (ends_on IS NULL OR ends_on>=$3::date)",
+      [p.section_subject_id, a.id, a.today, p.section_id],
     );
     check(r.rowCount, "Paper access denied", 403);
   }
@@ -61,10 +70,22 @@ export async function paperScope(db: DB, a: Actor, id: string) {
 export function exams(app: FastifyInstance) {
   app.get("/v1/exam-cycles", async (req) => {
     const a = await actor(req);
+    const access = await capabilities(pool, a);
+    check(
+      a.admin ||
+        access.managedSections.length ||
+        access.teachingSections.length,
+      "Exam access denied",
+      403,
+    );
     return (
       await pool.query(
-        "SELECT c.* FROM exam_cycles c JOIN academic_years y ON y.id=c.academic_year_id WHERE y.organization_id=$1 ORDER BY c.sort_order",
-        [a.org],
+        "SELECT c.* FROM exam_cycles c JOIN academic_years y ON y.id=c.academic_year_id WHERE y.organization_id=$1 AND ($2 OR c.academic_year_id IN(SELECT academic_year_id FROM sections WHERE id=ANY($3::uuid[]))) ORDER BY c.sort_order",
+        [
+          a.org,
+          a.admin,
+          [...access.managedSections, ...access.teachingSections],
+        ],
       )
     ).rows;
   });
@@ -120,10 +141,9 @@ export function exams(app: FastifyInstance) {
   });
   app.put("/v1/exam-cycles/:cycle/sections/:section/window", async (req) => {
     const a = await actor(req);
-    admin(a);
     const { cycle, section } = req.params as any;
     uuid.parse(cycle);
-    await scope(pool, a, uuid.parse(section));
+    await manage(pool, a, uuid.parse(section));
     const d = z
       .object({
         attendanceFrom: schoolDate,
@@ -177,88 +197,20 @@ export function exams(app: FastifyInstance) {
     });
   });
   app.put("/v1/exam-cycles/:cycle/sections/:section/scheme", async (req) => {
-    const a = await actor(req);
-    admin(a);
-    const { cycle, section } = req.params as any;
-    uuid.parse(cycle);
-    await scope(pool, a, uuid.parse(section));
-    const s = schemeSchema.parse(req.body);
-    return transaction(async (db) => {
-      const approved = await db.query(
-        "SELECT 1 FROM exam_scheme_approvals WHERE exam_cycle_id=$1 AND section_id=$2 AND revision=current_scheme_revision($1,$2)",
-        [cycle, section],
-      );
-      check(
-        !approved.rowCount,
-        "Approved schemes require a new cycle/revision; cannot overwrite",
-        409,
-      );
-      const count = await db.query(
-        "SELECT 1 FROM marks m JOIN exam_assessments p ON p.id=m.assessment_id JOIN section_subjects o ON o.id=p.section_subject_id WHERE p.exam_cycle_id=$1 AND o.section_id=$2 AND p.exam_scheme_revision=current_scheme_revision($1,$2)",
-        [cycle, section],
-      );
-      check(!count.rowCount, "Scheme already has marks; cannot replace", 409);
-      await db.query(
-        "DELETE FROM result_group_components WHERE result_group_id IN(SELECT id FROM result_groups WHERE exam_cycle_id=$1 AND section_id=$2 AND scheme_revision=current_scheme_revision($1,$2))",
-        [cycle, section],
-      );
-      await db.query(
-        "DELETE FROM result_groups WHERE exam_cycle_id=$1 AND section_id=$2 AND scheme_revision=current_scheme_revision($1,$2)",
-        [cycle, section],
-      );
-      await db.query(
-        "DELETE FROM exam_schedule_entries WHERE assessment_id IN(SELECT a.id FROM exam_assessments a JOIN section_subjects o ON o.id=a.section_subject_id WHERE a.exam_cycle_id=$1 AND o.section_id=$2 AND a.exam_scheme_revision=current_scheme_revision($1,$2))",
-        [cycle, section],
-      );
-      await db.query(
-        "DELETE FROM exam_assessments WHERE exam_cycle_id=$1 AND exam_scheme_revision=current_scheme_revision($1,$2) AND section_subject_id IN(SELECT id FROM section_subjects WHERE section_id=$2)",
-        [cycle, section],
-      );
-      const ids = new Map<string, string>();
-      for (const [i, p] of s.papers.entries()) {
-        const valid = await db.query(
-          "SELECT 1 FROM section_subjects o JOIN sections s ON s.id=o.section_id JOIN exam_cycles c ON c.academic_year_id=s.academic_year_id WHERE o.id=$1 AND s.id=$2 AND c.id=$3",
-          [p.offeringId, section, cycle],
-        );
-        check(valid.rowCount, "Paper offering and cycle mismatch");
-        const r = await db.query(
-          "INSERT INTO exam_assessments(exam_cycle_id,section_subject_id,title,display_label_ur,paper_code,max_marks,assessment_type,question_pattern,display_order,exam_scheme_revision) VALUES($1,$2,$3,$3,$4,$5,$6,$7,$8,current_scheme_revision($1,(SELECT section_id FROM section_subjects WHERE id=$2))) RETURNING id",
-          [cycle, p.offeringId, p.label, p.code, p.max, p.type, p.pattern, i],
-        );
-        ids.set(p.code, r.rows[0].id);
-        if (p.date)
-          await db.query(
-            "INSERT INTO exam_schedule_entries(assessment_id,exam_date) VALUES($1,$2)",
-            [r.rows[0].id, p.date],
-          );
-      }
-      for (const [i, g] of s.groups.entries()) {
-        const r = await db.query(
-          "INSERT INTO result_groups(exam_cycle_id,section_id,name,display_order,target_max_marks,scheme_revision) VALUES($1,$2,$3,$4,$5,current_scheme_revision($1,$2)) RETURNING id",
-          [cycle, section, g.name, i, g.max],
-        );
-        for (const code of g.paperCodes)
-          await db.query(
-            "INSERT INTO result_group_components(result_group_id,assessment_id,contribution_max) VALUES($1,$2,$3)",
-            [
-              r.rows[0].id,
-              ids.get(code),
-              s.papers.find((p) => p.code === code)!.max,
-            ],
-          );
-      }
-      await audit(db, a, "SCHEME", "sections", section, null, s);
-      return { ok: true };
-    });
+    const a = await actor(req),
+      p = req.params as any;
+    const cycle = uuid.parse(p.cycle),
+      section = uuid.parse(p.section),
+      s = schemeSchema.parse(req.body);
+    return transaction((db) => saveScheme(db, a, cycle, section, s));
   });
   app.post(
     "/v1/exam-cycles/:cycle/sections/:section/scheme/approve",
     async (req) => {
       const a = await actor(req);
-      admin(a);
       const { cycle, section } = req.params as any;
       uuid.parse(cycle);
-      await scope(pool, a, uuid.parse(section));
+      await manage(pool, a, uuid.parse(section));
       return transaction(async (db) => {
         const s = schemeSchema.parse(await loadScheme(db, cycle, section));
         await db.query(
@@ -276,9 +228,17 @@ export function exams(app: FastifyInstance) {
   );
   app.get("/v1/assessments", async (req) => {
     const a = await actor(req);
+    const access = await capabilities(pool, a);
+    check(
+      a.admin ||
+        access.managedSections.length ||
+        access.teachingSections.length,
+      "Exam access denied",
+      403,
+    );
     const all = (
       await pool.query(
-        "SELECT a.*,s.section_id FROM exam_assessments a JOIN section_subjects s ON s.id=a.section_subject_id JOIN sections c ON c.id=s.section_id WHERE c.organization_id=$1 AND a.exam_scheme_revision=current_scheme_revision(a.exam_cycle_id,s.section_id) ORDER BY a.display_order",
+        "SELECT a.*,s.section_id,c.name AS section_name,ec.title AS cycle_title FROM exam_assessments a JOIN section_subjects s ON s.id=a.section_subject_id JOIN sections c ON c.id=s.section_id JOIN exam_cycles ec ON ec.id=a.exam_cycle_id WHERE c.organization_id=$1 AND a.exam_scheme_revision=current_scheme_revision(a.exam_cycle_id,s.section_id) ORDER BY a.display_order",
         [a.org],
       )
     ).rows;
@@ -301,7 +261,7 @@ export function exams(app: FastifyInstance) {
       paper: p,
       entries: (
         await pool.query(
-          'SELECT e.id AS "enrollmentId",s.full_name,s.student_number,m.entry_state AS state,m.awarded,m.version FROM enrollments e JOIN students s ON s.id=e.student_id LEFT JOIN marks m ON m.enrollment_id=e.id AND m.assessment_id=$1 WHERE e.section_id=$2 ORDER BY e.roll_number',
+          'SELECT e.id AS "enrollmentId",s.full_name,s.student_number,m.entry_state AS state,m.awarded,m.version,m.on_leave AS "onLeave",m.on_time AS "onTime" FROM enrollments e JOIN students s ON s.id=e.student_id LEFT JOIN marks m ON m.enrollment_id=e.id AND m.assessment_id=$1 WHERE e.section_id=$2 ORDER BY e.roll_number',
           [id, p.section_id],
         )
       ).rows,
@@ -315,6 +275,10 @@ export function exams(app: FastifyInstance) {
       .parse(req.body);
     return transaction(async (db) => {
       const p = await paperScope(db, a, id);
+      check(
+        p.year_state === "ACTIVE",
+        "Historical exam records are read-only; an administrator must reopen the academic year",
+      );
       check(
         p.state === "OPEN",
         "Approve scheme before entering official marks",
@@ -336,8 +300,16 @@ export function exams(app: FastifyInstance) {
         );
         check((old?.version ?? 0) === e.version, "Mark changed; refresh", 409);
         await db.query(
-          "INSERT INTO marks(assessment_id,enrollment_id,entry_state,awarded,entered_by,entered_at) VALUES($1,$2,$3,$4,$5,now()) ON CONFLICT(assessment_id,enrollment_id) DO UPDATE SET entry_state=$3,awarded=$4,entered_by=$5,updated_at=now(),version=marks.version+1,approved_by=NULL,approved_at=NULL",
-          [id, e.enrollmentId, e.state, e.awarded ?? null, a.id],
+          "INSERT INTO marks(assessment_id,enrollment_id,entry_state,awarded,entered_by,entered_at,on_leave,on_time) VALUES($1,$2,$3,$4,$5,now(),$6,$7) ON CONFLICT(assessment_id,enrollment_id) DO UPDATE SET entry_state=$3,awarded=$4,entered_by=$5,on_leave=$6,on_time=$7,updated_at=now(),version=marks.version+1,approved_by=NULL,approved_at=NULL",
+          [
+            id,
+            e.enrollmentId,
+            e.state,
+            e.awarded ?? null,
+            a.id,
+            e.onLeave,
+            e.onTime ?? null,
+          ],
         );
         await audit(
           db,
@@ -358,6 +330,10 @@ export function exams(app: FastifyInstance) {
       id = uuid.parse((req.params as any).id);
     return transaction(async (db) => {
       const p = await paperScope(db, a, id);
+      check(
+        p.year_state === "ACTIVE",
+        "Historical exam records are read-only; an administrator must reopen the academic year",
+      );
       check(p.state === "OPEN", "Scheme not approved");
       const missing = await db.query(
         "SELECT 1 FROM enrollments e LEFT JOIN marks m ON m.enrollment_id=e.id AND m.assessment_id=$1 WHERE e.section_id=$2 AND e.state='ACTIVE' AND (m.id IS NULL OR m.entry_state IN ('PENDING','UNKNOWN_LEGACY_BLANK','WITHHELD'))",
@@ -374,10 +350,14 @@ export function exams(app: FastifyInstance) {
   });
   app.post("/v1/assessments/:id/approve", async (req) => {
     const a = await actor(req);
-    admin(a);
     const id = uuid.parse((req.params as any).id);
     return transaction(async (db) => {
       const p = await paperScope(db, a, id);
+      check(
+        p.year_state === "ACTIVE",
+        "Historical exam records are read-only; an administrator must reopen the academic year",
+      );
+      await manage(db, a, p.section_id);
       check(p.submitted_at, "Submit paper first");
       await db.query("UPDATE exam_assessments SET approved_by=$2 WHERE id=$1", [
         id,
@@ -393,11 +373,15 @@ export function exams(app: FastifyInstance) {
   });
   app.post("/v1/assessments/:id/reopen", async (req) => {
     const a = await actor(req);
-    admin(a);
     const id = uuid.parse((req.params as any).id);
     const { reason } = z.object({ reason: z.string().min(5) }).parse(req.body);
     return transaction(async (db) => {
-      await paperScope(db, a, id);
+      const p = await paperScope(db, a, id);
+      check(
+        p.year_state === "ACTIVE",
+        "Historical exam records are read-only; an administrator must reopen the academic year",
+      );
+      await manage(db, a, p.section_id);
       await db.query(
         "UPDATE exam_assessments SET submitted_at=NULL,approved_by=NULL WHERE id=$1",
         [id],
@@ -449,6 +433,28 @@ export function exams(app: FastifyInstance) {
       check(old.version === d.version, "Policy changed; refresh", 409);
       if (d.approve) {
         const p = policySchema.parse(d.policy);
+        check(
+          p.passMinimumPercent === 40 && p.paperMinimumPercent === null,
+          "The institutional overall pass minimum is 40%; no per-paper minimum was specified",
+        );
+        check(
+          p.ranking.topN === 3 && p.ranking.onlyPassing,
+          "Only eligible top-three positions are permitted",
+        );
+        for (const [status, credit] of Object.entries(p.attendance.credits)) {
+          const expected = (
+            {
+              PRESENT: [1, 1],
+              ABSENT: [0, 1],
+              HALF: [0.5, 1],
+              LEAVE: [0, 0],
+            } as Record<string, number[]>
+          )[status];
+          check(
+            credit.earned === expected[0] && credit.possible === expected[1],
+            "Attendance credits must use Present 1, Half 0.5, Absent 0, and exclude Leave",
+          );
+        }
         const years = (
           await db.query(
             "SELECT id FROM academic_years WHERE organization_id=$1",
@@ -512,6 +518,7 @@ export function exams(app: FastifyInstance) {
         ...(d.approve
           ? {
               approvedPolicy: d.policy,
+              approvedAttendance: (d.policy as any).attendance,
               approvedEditWindow: {
                 days: (d.policy as any).attendance.backdateDays,
                 approvedBy: a.id,
@@ -538,4 +545,118 @@ export function exams(app: FastifyInstance) {
       return { ok: true };
     });
   });
+}
+
+export async function saveScheme(
+  db: DB,
+  a: Actor,
+  cycle: string,
+  section: string,
+  s: z.infer<typeof schemeSchema>,
+) {
+  await manage(db, a, section);
+  await assertCurriculum(db, section, s, cycle);
+  const approved = await db.query(
+    "SELECT 1 FROM exam_scheme_approvals WHERE exam_cycle_id=$1 AND section_id=$2 AND revision=current_scheme_revision($1,$2)",
+    [cycle, section],
+  );
+  check(
+    !approved.rowCount,
+    "Approved schemes require a new cycle/revision; cannot overwrite",
+    409,
+  );
+  const count = await db.query(
+    "SELECT 1 FROM marks m JOIN exam_assessments p ON p.id=m.assessment_id JOIN section_subjects o ON o.id=p.section_subject_id WHERE p.exam_cycle_id=$1 AND o.section_id=$2 AND p.exam_scheme_revision=current_scheme_revision($1,$2)",
+    [cycle, section],
+  );
+  check(!count.rowCount, "Scheme already has marks; cannot replace", 409);
+  await db.query(
+    "DELETE FROM result_group_components WHERE result_group_id IN(SELECT id FROM result_groups WHERE exam_cycle_id=$1 AND section_id=$2 AND scheme_revision=current_scheme_revision($1,$2))",
+    [cycle, section],
+  );
+  await db.query(
+    "DELETE FROM result_groups WHERE exam_cycle_id=$1 AND section_id=$2 AND scheme_revision=current_scheme_revision($1,$2)",
+    [cycle, section],
+  );
+  await db.query(
+    "DELETE FROM exam_schedule_entries WHERE assessment_id IN(SELECT a.id FROM exam_assessments a JOIN section_subjects o ON o.id=a.section_subject_id WHERE a.exam_cycle_id=$1 AND o.section_id=$2 AND a.exam_scheme_revision=current_scheme_revision($1,$2))",
+    [cycle, section],
+  );
+  await db.query(
+    "DELETE FROM exam_assessments WHERE exam_cycle_id=$1 AND exam_scheme_revision=current_scheme_revision($1,$2) AND section_subject_id IN(SELECT id FROM section_subjects WHERE section_id=$2)",
+    [cycle, section],
+  );
+  const ids = new Map<string, string>();
+  for (const [i, p] of s.papers.entries()) {
+    const valid = await db.query(
+      "SELECT 1 FROM section_subjects o JOIN sections s ON s.id=o.section_id JOIN exam_cycles c ON c.academic_year_id=s.academic_year_id WHERE o.id=$1 AND s.id=$2 AND c.id=$3",
+      [p.offeringId, section, cycle],
+    );
+    check(valid.rowCount, "Paper offering and cycle mismatch");
+    const r = await db.query(
+      "INSERT INTO exam_assessments(exam_cycle_id,section_subject_id,title,display_label_ur,paper_code,max_marks,assessment_type,question_pattern,display_order,exam_scheme_revision) VALUES($1,$2,$3,$3,$4,$5,$6,$7,$8,current_scheme_revision($1,(SELECT section_id FROM section_subjects WHERE id=$2))) RETURNING id",
+      [cycle, p.offeringId, p.label, p.code, p.max, p.type, p.pattern, i],
+    );
+    ids.set(p.code, r.rows[0].id);
+    if (p.date)
+      await db.query(
+        "INSERT INTO exam_schedule_entries(assessment_id,exam_date) VALUES($1,$2)",
+        [r.rows[0].id, p.date],
+      );
+  }
+  for (const [i, g] of s.groups.entries()) {
+    const r = await db.query(
+      "INSERT INTO result_groups(exam_cycle_id,section_id,name,display_order,target_max_marks,scheme_revision) VALUES($1,$2,$3,$4,$5,current_scheme_revision($1,$2)) RETURNING id",
+      [cycle, section, g.name, i, g.max],
+    );
+    for (const code of g.paperCodes)
+      await db.query(
+        "INSERT INTO result_group_components(result_group_id,assessment_id,contribution_max) VALUES($1,$2,$3)",
+        [
+          r.rows[0].id,
+          ids.get(code),
+          s.papers.find((p) => p.code === code)!.max,
+        ],
+      );
+  }
+  await audit(db, a, "SCHEME", "sections", section, null, s);
+  return { ok: true };
+}
+
+export async function assertCurriculum(
+  db: DB,
+  section: string,
+  s: z.infer<typeof schemeSchema>,
+  cycle?: string,
+) {
+  const own = (
+    await db.query("SELECT scheme FROM section_curricula WHERE section_id=$1", [
+      section,
+    ])
+  ).rows[0];
+  const others: any[] = [];
+  if (own?.scheme) others.push(own.scheme);
+  else if (cycle) {
+    const cycles = (
+      await db.query(
+        "SELECT DISTINCT a.exam_cycle_id FROM exam_assessments a JOIN section_subjects o ON o.id=a.section_subject_id WHERE o.section_id=$1 AND a.exam_cycle_id<>$2 AND a.exam_scheme_revision=current_scheme_revision(a.exam_cycle_id,$1)",
+        [section, cycle],
+      )
+    ).rows;
+    for (const c of cycles) {
+      const candidate = await loadScheme(db, c.exam_cycle_id, section);
+      if (candidate.papers.length) others.push(candidate);
+    }
+  }
+  for (const other of others) {
+    const signature = (x: any) =>
+      JSON.stringify({
+        papers: x.papers.map((p: any) => [p.code, p.offeringId]).sort(),
+        groups: x.groups.map((g: any) => [g.name, [...g.paperCodes].sort()]),
+      });
+    check(
+      signature(s) === signature(other),
+      "All exam sessions must use the class curriculum's subjects, codes and six groups; revise the class curriculum before creating a new scheme",
+    );
+  }
 }

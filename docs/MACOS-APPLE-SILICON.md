@@ -60,14 +60,16 @@ open -e .env.demo
 
 Find `HIKMAH_DEMO_PASSWORD=` and copy only the value after `=`. Sign in with:
 
-| Email                    | Access                       |
-| ------------------------ | ---------------------------- |
-| `admin@hikmah.example`   | Administrator                |
-| `admin2@hikmah.example`  | Second administrator         |
-| `teacher@hikmah.example` | Assigned class/paper teacher |
-| `ameer@hikmah.example`   | Section A attendance         |
+| Email                    | Access                                       |
+| ------------------------ | -------------------------------------------- |
+| `admin@hikmah.example`   | Administrator                                |
+| `admin2@hikmah.example`  | Second administrator                         |
+| `teacher@hikmah.example` | Subject teacher (fresh demo)                 |
+| `subject@hikmah.example` | Subject-only teacher on fresh/upgraded demos |
+| `mushrif@hikmah.example` | All subjects and attendance in Section A     |
+| `ameer@hikmah.example`   | Section A attendance                         |
 
-All four synthetic accounts use the generated `HIKMAH_DEMO_PASSWORD`. Keep the configuration file private and preserve its credential values after the first setup; the database volume keeps the original credentials and accounts. Finder hides dotfiles; `open -e .env.demo` opens it directly.
+All synthetic accounts use the generated `HIKMAH_DEMO_PASSWORD`. Keep the configuration file private and preserve its credential values after the first setup; the database volume keeps the original credentials and accounts. Finder hides dotfiles; `open -e .env.demo` opens it directly.
 
 ## 5. Check the application
 
@@ -81,7 +83,7 @@ Run the full automated checks from Terminal in the same folder:
 bash scripts/demo.sh test
 ```
 
-The command rebuilds the current source, runs lint/type checks, runs the database/PDF integration tests, and builds the web/API applications. It returns to the prompt with exit code zero on success. You should see 27 tests pass and no test failures. The test runner creates and drops its own temporary database, preserving the demo database. This command does not run native-device or browser automation; use the manual browser steps above on your Mac.
+The command rebuilds the current source, runs lint/type checks, runs the database/PDF integration tests, and builds the web/API applications. It returns to the prompt with exit code zero on success. You should see 31 tests pass and no test failures. The test runner creates and drops its own temporary database, preserving the demo database. This command does not run native-device or browser automation; use the manual browser steps above on your Mac.
 
 ## 6. Status, stopping and starting again
 
@@ -132,7 +134,7 @@ cp "$HOME/Downloads/Hikmah Logo.png" apps/web/public/hikmah_logo.png
 bash scripts/demo.sh start
 ```
 
-This copies your exact image without altering it and rebuilds the application to use it. The `/Users/.../Downloads/` path provided in chat was not available in the cloud workspace, so the original PNG is not included in the GitHub update. Without that file the app shows a simple academic mark beside the institute name. This web asset setting does not replace the separate Expo app icon or published PDF branding.
+This copies your exact image without altering it and rebuilds the application to use it. The original user-uploaded PNG is included in the repository. The copy command above is only needed if you want to replace it with another local copy. Without that file the app shows a simple academic mark beside the institute name. This web asset setting does not replace the separate Expo app icon or published PDF branding.
 
 For a hosted installation, follow [deployment and recovery](DEPLOYMENT.md) and the remaining acceptance checks in [the implementation record](IMPLEMENTATION_STATUS.md). The local demo command does not deploy a public site. The institute's policies, staging/security/recovery checks and native-device acceptance remain separate rollout requirements.
 

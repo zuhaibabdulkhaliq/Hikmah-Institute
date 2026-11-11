@@ -40,7 +40,7 @@ export function markImport(app: FastifyInstance) {
       seen.add(number);
       const enrolled = (
         await pool.query(
-          "SELECT e.id,m.version FROM enrollments e JOIN students s ON s.id=e.student_id LEFT JOIN marks m ON m.enrollment_id=e.id AND m.assessment_id=$1 WHERE e.section_id=$2 AND s.student_number=$3",
+          "SELECT e.id,m.version,m.on_leave,m.on_time FROM enrollments e JOIN students s ON s.id=e.student_id LEFT JOIN marks m ON m.enrollment_id=e.id AND m.assessment_id=$1 WHERE e.section_id=$2 AND s.student_number=$3",
           [id, paper.section_id, number],
         )
       ).rows[0];
@@ -90,6 +90,8 @@ export function markImport(app: FastifyInstance) {
         state,
         awarded,
         version: enrolled.version ?? 0,
+        onLeave: enrolled.on_leave ?? false,
+        onTime: enrolled.on_time ?? null,
         reason,
       });
       if (!parsed.success) {

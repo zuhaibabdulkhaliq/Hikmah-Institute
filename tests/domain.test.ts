@@ -38,7 +38,7 @@ export const policy = policySchema.parse({
     credits: {
       PRESENT: { earned: 1, possible: 1 },
       ABSENT: { earned: 0, possible: 1 },
-      LATE: { earned: 0.5, possible: 1 },
+      HALF: { earned: 0.5, possible: 1 },
       LEAVE: { earned: 0, possible: 0 },
     },
     zeroDenominator: "BLOCK",
@@ -133,7 +133,7 @@ test("policy requires complete credits and contiguous grades, never inferred thr
 });
 test("R05: attendance credit policy and zero denominator", () => {
   assert.equal(
-    attendancePercent(["PRESENT", "LATE", "ABSENT", "LEAVE"], policy.attendance)
+    attendancePercent(["PRESENT", "HALF", "ABSENT", "LEAVE"], policy.attendance)
       .percent,
     "50",
   );
@@ -141,9 +141,9 @@ test("R05: attendance credit policy and zero denominator", () => {
 });
 test("R14: competition and dense tie policies and topN", () => {
   const rows = [
-    { percent: "90", passing: true },
-    { percent: "90", passing: true },
-    { percent: "80", passing: true },
+    { percent: "90", passing: true, onTimeEligible: true },
+    { percent: "90", passing: true, onTimeEligible: true },
+    { percent: "85", passing: true, onTimeEligible: true },
   ];
   assert.deepEqual(
     rank(rows, policy.ranking).map((r) => r.rank),
@@ -182,4 +182,90 @@ test("Approved absence-as-zero also obeys per-paper pass requirements", () => {
     policy,
   );
   assert.equal(unresolved.passing, false);
+});
+
+test("Institute rules: 40% overall pass, strict >80% positions, timely completion and shared top three", async () => {
+  const { institutePolicy, positionEligibility } =
+    await import("../packages/domain/src/index.ts");
+  const marks = Object.fromEntries(
+    scheme.papers.map((p) => [
+      p.code,
+      {
+        state: "GRADED" as const,
+        awarded: Number((p.max * 0.4).toFixed(2)),
+        onTime: true,
+        onLeave: false,
+      },
+    ]),
+  );
+  assert.equal(calculate(scheme, marks, institutePolicy).passing, true);
+  assert.equal(positionEligibility(scheme, marks), true);
+  assert.equal(
+    positionEligibility(scheme, {
+      ...marks,
+      P01: { ...marks.P01, onTime: false },
+    }),
+    false,
+  );
+  assert.equal(
+    positionEligibility(scheme, {
+      ...marks,
+      P01: { ...marks.P01, onTime: null },
+    }),
+    false,
+  );
+  assert.equal(
+    positionEligibility(scheme, {
+      ...marks,
+      P01: { ...marks.P01, onLeave: true },
+    }),
+    false,
+  );
+  const rows = [
+    { percent: "100", passing: true, onTimeEligible: false },
+    { percent: "90", passing: true, onTimeEligible: true },
+    { percent: "90", passing: true, onTimeEligible: true },
+    { percent: "89", passing: true, onTimeEligible: true },
+    { percent: "88", passing: true, onTimeEligible: true },
+    { percent: "80", passing: true, onTimeEligible: true },
+  ];
+  assert.deepEqual(
+    rank(rows, institutePolicy.ranking).map((r) => r.rank),
+    [null, 1, 1, 3, null, null],
+  );
+  assert.equal(
+    rank(
+      [{ percent: "80.001", passing: true, onTimeEligible: true }],
+      institutePolicy.ranking,
+    )[0].rank,
+    1,
+  );
+  assert.throws(() =>
+    markInput.parse({
+      enrollmentId: scheme.papers[0].offeringId,
+      state: "GRADED",
+      awarded: 10,
+      version: 0,
+      onLeave: true,
+      onTime: true,
+    }),
+  );
+});
+test("Exactly six class groups and the confirmed Half/Leave formula", async () => {
+  const { instituteAttendance, classLevelNames } =
+    await import("../packages/domain/src/index.ts");
+  assert.throws(() =>
+    schemeSchema.parse({ ...scheme, groups: scheme.groups.slice(1) }),
+  );
+  assert.equal(
+    attendancePercent(
+      ["PRESENT", "HALF", "ABSENT", "LEAVE"],
+      instituteAttendance,
+    ).percent,
+    "50",
+  );
+  assert.equal(attendancePercent(["LEAVE"], instituteAttendance).percent, null);
+  assert.equal(classLevelNames.length, 9);
+  assert.equal(classLevelNames[0], "پریپ اولیٰ");
+  assert.equal(classLevelNames[8], "دورہ حدیث شریف");
 });

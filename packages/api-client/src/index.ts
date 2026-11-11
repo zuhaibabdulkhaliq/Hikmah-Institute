@@ -39,12 +39,22 @@ export function createClient(
     return result as T;
   };
 }
-export type Section = { id: string; name: string; code: string };
+export type Section = {
+  id: string;
+  name: string;
+  code: string;
+  academic_year_id?: string;
+  year_label?: string;
+  year_state?: string;
+  program_name?: string;
+  level_name?: string;
+};
 export type Enrollment = {
   id: string;
   student_number: string;
   full_name: string;
   roll_number: string;
+  student_id: string;
 };
 export type Sheet = {
   version: number;
@@ -58,5 +68,9 @@ export type Identity = {
   timezone: string;
   name: string;
   roles: string[];
+  accessVersion: string;
+  managedSections: string[];
+  attendanceSections: string[];
+  teachingSections: string[];
   sectionAssignments: { sectionId: string; role: string }[];
 };

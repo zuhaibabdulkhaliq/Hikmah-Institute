@@ -1,4 +1,8 @@
-import { useState, useEffect } from "react";
+import {
+  NativeAttendanceTotals,
+  NativePerformance,
+} from "../components/academic-reports";
+import { useState, useEffect, useRef } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radii } from "@hikmah/ui-tokens";
 import {
@@ -25,9 +29,10 @@ const base = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001";
 const api = createClient(base, () =>
   SecureStore.getItemAsync("hikmah-session"),
 );
-const statuses = ["PRESENT", "ABSENT", "LATE", "LEAVE"];
+const statuses = ["PRESENT", "ABSENT", "HALF", "LEAVE"];
 export default function Home() {
   const insets = useSafeAreaInsets();
+  const accessVersion = useRef("");
   const [me, setMe] = useState<Identity | null>(null),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
@@ -47,10 +52,12 @@ export default function Home() {
     [runs, setRuns] = useState<any[]>([]),
     [history, setHistory] = useState<any[]>([]),
     [reason, setReason] = useState("");
-  const ameer =
-    me?.sectionAssignments.some((s) => s.role === "AMEER") &&
-    !me.roles.includes("ADMIN") &&
-    !me.sectionAssignments.some((s) => s.role === "CLASS_TEACHER");
+  const canAttend =
+    !!me && (me.roles.includes("ADMIN") || me.attendanceSections.length > 0);
+  const canManage =
+    !!me && (me.roles.includes("ADMIN") || me.managedSections.length > 0);
+  const canMarks = canManage || !!me?.teachingSections.length;
+  const ameer = canAttend && !canMarks;
   async function run(fn: () => Promise<void>) {
     setBusy(true);
     setError("");
@@ -80,11 +87,37 @@ export default function Home() {
   }
   async function load() {
     const m = await api<Identity>("/v1/me");
+    if (accessVersion.current && accessVersion.current !== m.accessVersion) {
+      setSheet(null);
+      setRecords({});
+      setMarks(null);
+      setPaper("");
+      setPapers([]);
+      setRuns([]);
+      setHistory([]);
+      setPage(
+        m.roles.includes("ADMIN") || m.attendanceSections.length
+          ? "attendance"
+          : "marks",
+      );
+    }
+    accessVersion.current = m.accessVersion;
     setMe(m);
     setDate(m.today);
     const s = await api<Section[]>("/v1/sections");
     setSections(s);
-    setSection(s[0]?.id ?? "");
+    const attending =
+      m.roles.includes("ADMIN") || m.attendanceSections.length > 0;
+    const selected = s.find((x) =>
+      attending
+        ? m.roles.includes("ADMIN") || m.attendanceSections.includes(x.id)
+        : m.teachingSections.includes(x.id),
+    );
+    setSection(selected?.id ?? s[0]?.id ?? "");
+    if (!attending) {
+      setPage("marks");
+      setPapers(await api<any[]>("/v1/assessments"));
+    }
   }
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
@@ -106,7 +139,12 @@ export default function Home() {
     );
   }
   useEffect(() => {
-    if (section && /^\d{4}-\d{2}-\d{2}$/.test(date) && page === "attendance")
+    if (
+      canAttend &&
+      section &&
+      /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+      page === "attendance"
+    )
       void run(loadSheet);
   }, [section, date, page]);
   const button = (title: string, onPress: () => void, secondary = false) => (
@@ -151,7 +189,7 @@ export default function Home() {
       </Text>
       <Text style={styles.subtitle}>
         {me
-          ? `${me.name} · ${ameer ? "Class Ameer" : "Teaching staff"}`
+          ? `${me.name} · ${ameer ? "Class Ameer" : canManage ? "Mushrif / administrator" : "Subject teacher"}`
           : "Sign in to your staff workspace"}
       </Text>
       {busy && (
@@ -203,21 +241,13 @@ export default function Home() {
       ) : (
         <>
           <View style={styles.row}>
-            {button(
-              "Attendance",
-              () => setPage("attendance"),
-              page !== "attendance",
-            )}
-            {button(
-              "My history",
-              () =>
-                void run(async () => {
-                  setPage("history");
-                  setHistory(await api<any[]>("/v1/me/history"));
-                }),
-              page !== "history",
-            )}
-            {!ameer &&
+            {canAttend &&
+              button(
+                "Attendance",
+                () => setPage("attendance"),
+                page !== "attendance",
+              )}
+            {canManage &&
               button(
                 "Reports",
                 () =>
@@ -227,7 +257,7 @@ export default function Home() {
                   }),
                 page !== "reports",
               )}
-            {!ameer &&
+            {canMarks &&
               button(
                 "My papers",
                 () =>
@@ -252,6 +282,20 @@ export default function Home() {
             </>
           ) : page === "reports" ? (
             <>
+              <ScrollView horizontal>
+                {sections
+                  .filter(
+                    (s) =>
+                      me.roles.includes("ADMIN") ||
+                      me.managedSections.includes(s.id),
+                  )
+                  .map((s) =>
+                    button(s.name, () => setSection(s.id), s.id !== section),
+                  )}
+              </ScrollView>
+              {section && (
+                <NativePerformance section={section} request={api} run={run} />
+              )}
               {runs.map((r) => (
                 <View style={styles.card} key={r.id}>
                   <Text style={styles.name}>
@@ -289,12 +333,26 @@ export default function Home() {
             </>
           ) : page === "attendance" ? (
             <>
+              {section && (
+                <NativeAttendanceTotals
+                  section={section}
+                  request={api}
+                  run={run}
+                  refreshKey={sheet?.version}
+                />
+              )}
               <Text style={styles.label}>ASSIGNED SECTIONS</Text>
-              {sections.map((s) => (
-                <View key={s.id}>
-                  {button(s.name, () => setSection(s.id), section !== s.id)}
-                </View>
-              ))}
+              {sections
+                .filter(
+                  (s) =>
+                    me.roles.includes("ADMIN") ||
+                    me.attendanceSections.includes(s.id),
+                )
+                .map((s) => (
+                  <View key={s.id}>
+                    {button(s.name, () => setSection(s.id), section !== s.id)}
+                  </View>
+                ))}
               <Text style={styles.label}>SCHOOL DATE · YYYY-MM-DD</Text>
               <View style={styles.row}>
                 {[-1, 1].map((delta) => (
@@ -366,7 +424,7 @@ export default function Home() {
                             ? "P"
                             : status === "ABSENT"
                               ? "A"
-                              : status === "LATE"
+                              : status === "HALF"
                                 ? "L"
                                 : "Leave"}
                         </Text>
@@ -475,7 +533,7 @@ export default function Home() {
                             ...m,
                             state,
                             awarded:
-                              state === "GRADED" ? (m.awarded ?? 0) : null,
+                              state === "GRADED" ? (m.awarded ?? null) : null,
                           };
                           setMarks({ ...marks, entries });
                         }}
@@ -493,6 +551,41 @@ export default function Home() {
                       </Pressable>
                     ))}
                   </ScrollView>
+                  <View style={styles.row}>
+                    {(
+                      [
+                        ["onLeave", "Exam leave"],
+                        ["onTime", "Given on time"],
+                      ] as const
+                    ).map(([key, title]) => (
+                      <Pressable
+                        key={key}
+                        accessibilityRole="checkbox"
+                        accessibilityLabel={`${title} ${m.full_name}`}
+                        accessibilityState={{
+                          checked: m[key] === true,
+                          disabled: key === "onTime" && m.onLeave,
+                        }}
+                        disabled={key === "onTime" && m.onLeave}
+                        style={styles.status}
+                        onPress={() => {
+                          const entries = [...marks.entries];
+                          entries[i] = {
+                            ...m,
+                            [key]: !m[key],
+                            ...(key === "onLeave" && !m.onLeave
+                              ? { onTime: false }
+                              : {}),
+                          };
+                          setMarks({ ...marks, entries });
+                        }}
+                      >
+                        <Text style={{ color: colors.primary }}>
+                          {m[key] === true ? "☑" : "☐"} {title}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
                   <TextInput
                     style={styles.input}
                     accessibilityLabel={`Marks for ${m.full_name}`}
@@ -526,6 +619,8 @@ export default function Home() {
                               awarded:
                                 e.awarded == null ? null : Number(e.awarded),
                               version: e.version ?? 0,
+                              onLeave: e.onLeave ?? false,
+                              onTime: e.onTime ?? null,
                             })),
                           }),
                         });
@@ -542,6 +637,45 @@ export default function Home() {
                         });
                       }),
                     true,
+                  )}
+                  {(me.roles.includes("ADMIN") ||
+                    me.managedSections.includes(marks.paper.section_id)) && (
+                    <>
+                      {button(
+                        "Approve marks",
+                        () =>
+                          void run(async () => {
+                            await api(`/v1/assessments/${paper}/approve`, {
+                              method: "POST",
+                              body: "{}",
+                            });
+                            setMarks(
+                              await api(`/v1/assessments/${paper}/marks`),
+                            );
+                          }),
+                      )}
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Reason to reopen marks"
+                        value={reason}
+                        onChangeText={setReason}
+                      />
+                      {button(
+                        "Reopen marks with reason",
+                        () =>
+                          void run(async () => {
+                            await api(`/v1/assessments/${paper}/reopen`, {
+                              method: "POST",
+                              body: JSON.stringify({ reason }),
+                            });
+                            setReason("");
+                            setMarks(
+                              await api(`/v1/assessments/${paper}/marks`),
+                            );
+                          }),
+                        true,
+                      )}
+                    </>
                   )}
                 </>
               )}

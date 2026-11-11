@@ -10,9 +10,11 @@
 - `db/migrations`: checksum-tracked baseline/v2 SQL plus auth, workflow, integrity, invitation, revision and recovery migrations. Original specification files remain unchanged.
 - `scripts`: migration, seed, bootstrap, test isolation, PDF rendering, browser smoke, backup/restore.
 
+See [the current academic rules](ACADEMIC_RULES.md) for the latest role matrix, attendance formula and position eligibility.
+
 ## Integrity and permissions
 
-Better Auth owns password hashing and session handling; application accounts are mapped through `auth_subject`. Public signup is disabled. Every request reloads active application-user and current role/assignment state using the institute timezone. Ameer section checks, subject-paper checks, effective assignment dates, active academic years for attendance, and admin-only publication are enforced server-side.
+Better Auth owns password hashing and session handling; application accounts are mapped through `auth_subject`. Public signup is disabled. Every request reloads active application-user and current role/assignment state using the institute timezone. Ameer section checks, subject-paper checks, effective assignment dates, active academic years for attendance/mark entry, and administrator or assigned-Mushrif publication are enforced server-side.
 
 Writes use SERIALIZABLE transactions. Serialization failures, deadlocks and optimistic-version conflicts return 409 instead of silently overwriting records. Attendance draft replacement uses `If-Match`; a never-created sheet is version 0. This intentionally extends the source contract's existing-sheet minimum of 1. Marks use per-enrollment `version:0` for a new mark. Bulk attendance/publication require an `Idempotency-Key` and reject reusing a key for a different payload.
 
@@ -64,3 +66,16 @@ Errors use 400 invalid inputs, 401 no session, 403 insufficient scope, 404 unava
 Published PDF bytes live in PostgreSQL rather than an external object bucket, so they share transactional publication and backup guarantees. WeasyPrint uses local Noto Arabic fonts and escaped, snapshot-only HTML. Numeric runs are isolated as LTR inside the RTL table. PDFs contain revision identifiers and never consult mutable names at download time.
 
 CSV imports accept canonical headers or explicit source-column mapping. Unused import-created rows can be rolled back; foreign keys reject rollback after downstream attendance/marks/publication use, atomically. No official scaling transform, NO_TIES ranking, parent portal or offline sync is silently approximated; currently supported policy options are explicit in the schema/UI.
+
+## Academic extensions (11 November 2026)
+
+- `GET /v1/sections/:section/attendance-summary?period=YEAR|SESSION|PREVIOUS_SESSION&cycleId=...`: academic-day counts with coverage flags; `attendance-periods` lists scoped reporting windows.
+- `PUT /v1/sections/:section/calendar/range`: explicit weekdays and holidays, bounded by the academic year.
+- `GET/PUT /v1/sections/:section/curriculum`, `POST .../curriculum/from-session/:cycle`, `POST /v1/exam-cycles/:cycle/sections/:section/from-curriculum`: a common six-group subject/paper structure across sessions.
+- `POST /v1/sections/:section/subject-catalog` and `PUT /v1/assessments/:id/schedule`: scoped class subject and paper-date management.
+- `GET /v1/students/:student/performance[.pdf]?yearId=...&cycleId=...`: student-based authorization and history across class/year enrollments.
+- `GET /v1/sections/:section/performance[.pdf|.csv]?cycleId=...`: assigned-class reports; published sessions use frozen values and unfinalized sessions remain labeled draft.
+- `POST /v1/users`, `PUT /v1/users/:id/password`: administrator account creation/password change with session revocation.
+- `MarkInput` now carries `onLeave` and nullable `onTime`; `Identity` adds managed/attendance/teaching section lists and an access-version value used to discard cached views after permission changes.
+
+Migration 010 preserves legacy Late records, old policies and all publication assets. New inputs only accept Present/Absent/Half/Leave. No change to a published record is performed by the upgrade.

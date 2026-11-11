@@ -1,7 +1,15 @@
 import { z } from "zod";
 import type { FastifyInstance } from "fastify";
 import { pool, transaction } from "./db.ts";
-import { actor, admin, audit, check, scope } from "./security.ts";
+import {
+  actor,
+  admin,
+  audit,
+  check,
+  scope,
+  capabilities,
+  manage,
+} from "./security.ts";
 import { uuid, schoolDate } from "../../../packages/domain/src/index.ts";
 const text = z.string().min(1).max(200);
 export const resources = {
@@ -71,7 +79,7 @@ export function academics(app: FastifyInstance) {
       const a = await actor(req);
       if (route === "sections") {
         const all = await pool.query(
-          "SELECT s.*,y.label AS year_label,l.name_en AS level_name,p.name AS program_name FROM sections s JOIN academic_years y ON y.id=s.academic_year_id JOIN levels l ON l.id=s.level_id JOIN programs p ON p.id=s.program_id WHERE s.organization_id=$1 ORDER BY y.start_date DESC,l.ordinal,s.code",
+          "SELECT s.*,y.label AS year_label,y.state AS year_state,l.name_en AS level_name,p.name AS program_name FROM sections s JOIN academic_years y ON y.id=s.academic_year_id JOIN levels l ON l.id=s.level_id JOIN programs p ON p.id=s.program_id WHERE s.organization_id=$1 ORDER BY y.start_date DESC,l.ordinal,s.code",
           [a.org],
         );
         const visible = [];
@@ -150,6 +158,7 @@ export function academics(app: FastifyInstance) {
       roles: a.admin ? ["ADMIN"] : [],
       today: a.today,
       timezone: a.timezone,
+      ...(await capabilities(pool, a)),
       sectionAssignments: (
         await pool.query(
           `SELECT section_id AS "sectionId",role FROM section_staff_assignments WHERE user_id=$1 AND active AND starts_on<=$2::date AND (ends_on IS NULL OR ends_on>=$2::date)`,
@@ -232,7 +241,12 @@ export function academics(app: FastifyInstance) {
     const d = z
       .object({
         user_id: uuid,
-        role: z.enum(["CLASS_TEACHER", "AMEER", "ATTENDANCE_ASSISTANT"]),
+        role: z.enum([
+          "MUSHRIF",
+          "CLASS_TEACHER",
+          "AMEER",
+          "ATTENDANCE_ASSISTANT",
+        ]),
         starts_on: schoolDate,
         ends_on: schoolDate.nullable().default(null),
         ameerOverrideReason: z.string().min(5).optional(),
@@ -270,18 +284,25 @@ export function academics(app: FastifyInstance) {
     const a = await actor(req),
       { id } = req.params as any;
     await scope(pool, a, uuid.parse(id));
+    const c = await capabilities(pool, a);
+    if (!a.admin) {
+      check(
+        c.managedSections.includes(id) || c.teachingSections.includes(id),
+        "Subject access denied",
+        403,
+      );
+    }
     return (
       await pool.query(
-        "SELECT o.*,s.name_en,s.name_ur FROM section_subjects o JOIN subjects s ON s.id=o.subject_id WHERE o.section_id=$1 ORDER BY o.display_order",
-        [id],
+        "SELECT o.*,s.code,s.name_en,s.name_ur FROM section_subjects o JOIN subjects s ON s.id=o.subject_id WHERE o.section_id=$1 AND ($2::boolean OR EXISTS(SELECT 1 FROM subject_teacher_assignments t WHERE t.section_subject_id=o.id AND t.teacher_user_id=$3 AND t.starts_on<=$4::date AND (t.ends_on IS NULL OR t.ends_on>=$4::date))) ORDER BY o.display_order",
+        [id, a.admin || c.managedSections.includes(id), a.id, a.today],
       )
     ).rows;
   });
   app.post("/v1/sections/:id/subjects", async (req) => {
     const a = await actor(req);
-    admin(a);
     const { id } = req.params as any;
-    await scope(pool, a, uuid.parse(id));
+    await manage(pool, a, uuid.parse(id));
     const d = z
       .object({ subject_id: uuid, display_order: z.number().int().default(0) })
       .parse(req.body);

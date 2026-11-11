@@ -27,7 +27,13 @@ try {
   await pool.query(`CREATE DATABASE ${name}`);
   await run(["scripts/migrate.ts"]);
   await run(["scripts/seed.ts"]);
-  await run(["--test", "tests/domain.test.ts", "tests/api.test.ts"]);
+  await run([
+    "--test",
+    "--test-concurrency=1",
+    "tests/api.test.ts",
+    "tests/domain.test.ts",
+    "tests/zz-academic-rules.test.ts",
+  ]);
 } finally {
   await pool.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
   await pool.end();

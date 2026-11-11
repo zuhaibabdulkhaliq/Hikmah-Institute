@@ -1,3 +1,8 @@
+import {
+  classLevelNames,
+  instituteAttendance,
+  institutePolicy,
+} from "../packages/domain/src/index.ts";
 import { readFile } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
@@ -30,7 +35,67 @@ try {
       (await db.query("SELECT 1 FROM organizations WHERE id=$1", [id("org")]))
         .rowCount
     ) {
-      console.log("Synthetic seed already present; unchanged");
+      if (
+        !(
+          await db.query("SELECT 1 FROM app_users WHERE id=$1", [id("mushrif")])
+        ).rowCount
+      ) {
+        const uid = id("mushrif");
+        await db.query(
+          'INSERT INTO "user"(id,name,email,"emailVerified") VALUES($1,$2,$3,true)',
+          [uid, "Demo Mushrif", "mushrif@hikmah.example"],
+        );
+        await db.query(
+          `INSERT INTO account(id,"accountId","providerId","userId",password) VALUES($1,$2,'credential',$2,$3)`,
+          [randomUUID(), uid, hashed],
+        );
+        await db.query(
+          "INSERT INTO app_users(id,auth_subject,email,display_name) VALUES($1::text::uuid,$1::text,$2,$3)",
+          [uid, "mushrif@hikmah.example", "Demo Mushrif"],
+        );
+        await db.query(
+          "INSERT INTO section_staff_assignments(section_id,user_id,role,starts_on) VALUES($1,$2,'MUSHRIF','2026-01-01')",
+          [id("sectionA"), uid],
+        );
+      }
+      if (
+        !(
+          await db.query("SELECT 1 FROM app_users WHERE id=$1", [id("subject")])
+        ).rowCount
+      ) {
+        const uid = id("subject");
+        await db.query(
+          'INSERT INTO "user"(id,name,email,"emailVerified") VALUES($1,$2,$3,true)',
+          [uid, "Demo subject teacher", "subject@hikmah.example"],
+        );
+        await db.query(
+          `INSERT INTO account(id,"accountId","providerId","userId",password) VALUES($1,$2,'credential',$2,$3)`,
+          [randomUUID(), uid, hashed],
+        );
+        await db.query(
+          "INSERT INTO app_users(id,auth_subject,email,display_name) VALUES($1::text::uuid,$1::text,$2,$3)",
+          [uid, "subject@hikmah.example", "Demo subject teacher"],
+        );
+        for (const code of ["P01", "P02", "P03"])
+          await db.query(
+            "INSERT INTO subject_teacher_assignments(section_subject_id,teacher_user_id,starts_on) VALUES($1,$2,'2026-01-01')",
+            [id("offering" + code), uid],
+          );
+      }
+      for (const code of ["A", "B"])
+        await db.query(
+          "UPDATE sections s SET level_id=$3 WHERE s.id=$1 AND s.organization_id=$2 AND s.level_id=$4 AND s.name=$5 AND NOT EXISTS(SELECT 1 FROM sections other WHERE other.id<>s.id AND other.academic_year_id=s.academic_year_id AND other.program_id=s.program_id AND other.code=s.code AND other.level_id=$3)",
+          [
+            id("section" + code),
+            id("org"),
+            id("level4"),
+            id("level3"),
+            `ثالثہ — ${code}`,
+          ],
+        );
+      console.log(
+        "Synthetic seed retained; missing Mushrif demo account added without changing existing passwords",
+      );
       return;
     }
     await db.query(
@@ -38,10 +103,23 @@ try {
       [id("org"), "Hikmah Institute — synthetic demo", "حکمہ انسٹیٹیوٹ"],
     );
     await db.query(
-      "INSERT INTO organization_settings(organization_id) VALUES($1)",
-      [id("org")],
+      "INSERT INTO organization_settings(organization_id,config) VALUES($1,$2)",
+      [
+        id("org"),
+        JSON.stringify({
+          approvedAttendance: instituteAttendance,
+          draftPolicy: institutePolicy,
+        }),
+      ],
     );
-    for (const role of ["admin", "admin2", "teacher", "ameer"]) {
+    for (const role of [
+      "admin",
+      "admin2",
+      "teacher",
+      "ameer",
+      "mushrif",
+      "subject",
+    ]) {
       const uid = id(role);
       await db.query(
         'INSERT INTO "user"(id,name,email,"emailVerified") VALUES($1,$2,$3,true)',
@@ -69,10 +147,14 @@ try {
       "INSERT INTO programs(id,organization_id,name,code) VALUES($1,$2,'شام','EVENING')",
       [id("program"), id("org")],
     );
+    await db.query(
+      "INSERT INTO programs(organization_id,name,code) VALUES($1,'صباح','MORNING')",
+      [id("org")],
+    );
     for (let n = 1; n <= 9; n++)
       await db.query(
-        "INSERT INTO levels(id,organization_id,ordinal,name_en) VALUES($1,$2,$3,$4)",
-        [id("level" + n), id("org"), n, `Level ${n}`],
+        "INSERT INTO levels(id,organization_id,ordinal,name_en,name_ur) VALUES($1,$2,$3,$4,$4)",
+        [id("level" + n), id("org"), n, classLevelNames[n - 1]],
       );
     for (const code of ["A", "B"])
       await db.query(
@@ -82,19 +164,15 @@ try {
           id("org"),
           id("year"),
           id("program"),
-          id("level3"),
+          id("level4"),
           code,
           `ثالثہ — ${code}`,
         ],
       );
-    for (const role of ["teacher", "ameer"])
+    for (const role of ["mushrif", "ameer"])
       await db.query(
         "INSERT INTO section_staff_assignments(section_id,user_id,role,starts_on) VALUES($1,$2,$3,'2026-01-01')",
-        [
-          id("sectionA"),
-          id(role),
-          role === "teacher" ? "CLASS_TEACHER" : "AMEER",
-        ],
+        [id("sectionA"), id(role), role === "mushrif" ? "MUSHRIF" : "AMEER"],
       );
     for (let n = 0; n < 20; n++) {
       const student = n < 2 ? expected.students[n] : null;
@@ -140,10 +218,11 @@ try {
         ],
       );
       if (["P01", "P02", "P03"].includes(paper.code))
-        await db.query(
-          "INSERT INTO subject_teacher_assignments(section_subject_id,teacher_user_id,starts_on) VALUES($1,$2,'2026-01-01')",
-          [id("offering" + paper.code), id("teacher")],
-        );
+        for (const teacherRole of ["teacher", "subject"])
+          await db.query(
+            "INSERT INTO subject_teacher_assignments(section_subject_id,teacher_user_id,starts_on) VALUES($1,$2,'2026-01-01')",
+            [id("offering" + paper.code), id(teacherRole)],
+          );
       await db.query(
         "INSERT INTO exam_assessments(id,exam_cycle_id,section_subject_id,title,display_label_ur,paper_code,max_marks,display_order) VALUES($1,$2,$3,$4,$4,$5,$6,$7)",
         [
@@ -158,7 +237,7 @@ try {
       );
       for (let n = 0; n < 2; n++)
         await db.query(
-          "INSERT INTO marks(assessment_id,enrollment_id,entry_state,awarded,entered_by) VALUES($1,$2,'GRADED',$3,$4)",
+          "INSERT INTO marks(assessment_id,enrollment_id,entry_state,awarded,entered_by,on_time) VALUES($1,$2,'GRADED',$3,$4,true)",
           [
             id(paper.code),
             id("enrollment" + n),
@@ -187,6 +266,29 @@ try {
         );
       }
     }
+    await db.query(
+      "INSERT INTO section_curricula(section_id,scheme,updated_by) VALUES($1,$2,$3)",
+      [
+        id("sectionA"),
+        JSON.stringify({
+          papers: scheme.papers.map((p: any) => ({
+            code: p.code,
+            offeringId: id("offering" + p.code),
+            label: p.label_ur,
+            max: p.max_marks,
+            type: p.type,
+            pattern: "",
+            date: null,
+          })),
+          groups: scheme.result_groups.map((g: any) => ({
+            name: g.code,
+            max: g.max_marks,
+            paperCodes: g.paper_codes,
+          })),
+        }),
+        id("admin"),
+      ],
+    );
     console.log(
       "Seeded 2 admins, teacher, Ameer, 9 levels, 2 sections, 20 synthetic learners, 3 cycles and proposed 11-paper scheme. Policies remain unapproved.",
     );

@@ -1,3 +1,8 @@
+import {
+  classLevelNames,
+  instituteAttendance,
+  institutePolicy,
+} from "../packages/domain/src/index.ts";
 import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { pool, transaction } from "../apps/api/src/db.ts";
@@ -22,8 +27,14 @@ try {
       process.env.INSTITUTE_NAME ?? "Hikmah Institute",
     ]);
     await db.query(
-      "INSERT INTO organization_settings(organization_id) VALUES($1)",
-      [org],
+      "INSERT INTO organization_settings(organization_id,config) VALUES($1,$2)",
+      [
+        org,
+        JSON.stringify({
+          approvedAttendance: instituteAttendance,
+          draftPolicy: institutePolicy,
+        }),
+      ],
     );
     await db.query(
       'INSERT INTO "user"(id,name,email,"emailVerified") VALUES($1,$2,$3,true)',
@@ -41,10 +52,14 @@ try {
       "INSERT INTO organization_roles(organization_id,user_id,role) VALUES($1,$2,'ADMIN')",
       [org, user],
     );
+    await db.query(
+      "INSERT INTO programs(organization_id,name,code) VALUES($1,'صباح','MORNING'),($1,'شام','EVENING')",
+      [org],
+    );
     for (let n = 1; n <= 9; n++)
       await db.query(
-        "INSERT INTO levels(organization_id,ordinal,name_en) VALUES($1,$2,$3)",
-        [org, n, `Level ${n}`],
+        "INSERT INTO levels(organization_id,ordinal,name_en,name_ur) VALUES($1,$2,$3,$3)",
+        [org, n, classLevelNames[n - 1]],
       );
     console.log(
       "Initial administrator created. Configure institute identity and academic policies in the portal.",

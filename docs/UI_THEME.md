@@ -20,10 +20,10 @@ The shared `@hikmah/ui-tokens` package defines blue/white colors and radius valu
 
 ## Original logo
 
-The logo displayed in chat supplied the palette reference. Its original PNG was not accessible from the Mac-local file path in the cloud workspace and has not been recreated. Put the original asset at `apps/web/public/hikmah_logo.png`, then rebuild; the web brand detects it automatically. Without the asset, a decorative academic mark and the institute name are shown. See [the Mac logo instructions](MACOS-APPLE-SILICON.md#use-your-original-logo).
+The original user-uploaded PNG is now included at `apps/web/public/hikmah_logo.png` and detected at build time. It has not been recreated or altered. Replace that exact file and rebuild to update it. Without the asset, a decorative academic mark and the institute name are shown. See [the Mac logo instructions](MACOS-APPLE-SILICON.md#use-your-original-logo).
 
 ## Verification
 
-Use `bash scripts/demo.sh test` for lint, type checks, the 27 domain/database/PDF tests and production builds. With an API/web instance running and a private demo password supplied via the environment, `scripts/browser-smoke.ts` exercises login, attendance, raw result preview, policy editing, all ten screens at 1440/1024/390/320px, keyboard navigation, sign-out and activation. Screenshots remain in ignored `.data/screenshots/`.
+Use `bash scripts/demo.sh test` for lint, type checks, the 31 domain/database/PDF tests and production builds. With an API/web instance running and a private demo password supplied via the environment, `scripts/browser-smoke.ts` exercises login, attendance, raw result preview, policy editing, all ten screens at 1440/1024/820/768/390/320px, keyboard navigation, sign-out and activation. Screenshots remain in ignored `.data/screenshots/`.
 
-Expo iOS/Android bundle export verifies module integration; it does not establish physical-device UI or native E2E acceptance. The original institute PNG was unavailable for visual verification. Official policy sign-off and the remaining rollout gates in the implementation record remain outstanding.
+Expo iOS/Android bundle export verifies module integration; it does not establish physical-device UI or native E2E acceptance. The uploaded institute PNG was subsequently verified in the running web interface. Official policy sign-off and the remaining rollout gates in the implementation record remain outstanding.

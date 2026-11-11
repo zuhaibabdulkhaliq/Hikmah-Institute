@@ -1,6 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
-import { sumMarks } from "@hikmah/domain";
+import {
+  AttendanceTotals,
+  CalendarBuilder,
+  CurriculumPanel,
+  StudentPerformance,
+  CreateAccount,
+  ChangePassword,
+  PromotionPicker,
+} from "../components/academic-tools";
+import { sumMarks, institutePolicy } from "@hikmah/domain";
 import { AuthFrame, Brand, Icon } from "../components/workspace-ui";
 import {
   createClient,
@@ -24,7 +33,17 @@ const navigation = [
   "Correction requests",
   "Audit history",
 ];
-const statuses = ["PRESENT", "ABSENT", "LATE", "LEAVE"];
+const statuses = ["PRESENT", "ABSENT", "HALF", "LEAVE"];
+function canView(me: Identity | null, view: string) {
+  if (!me) return false;
+  if (me.roles.includes("ADMIN") || view === "Overview") return true;
+  if (view === "Attendance") return me.attendanceSections.length > 0;
+  if (view === "Marks entry")
+    return me.teachingSections.length > 0 || me.managedSections.length > 0;
+  if (["Exams & schemes", "Results & reports"].includes(view))
+    return me.managedSections.length > 0;
+  return false;
+}
 const fields: Record<string, string[]> = {
   "academic-years": ["label", "hijri_label", "start_date", "end_date", "state"],
   programs: ["name", "code"],
@@ -53,7 +72,12 @@ export default function Home() {
       const s = await api<Section[]>("/v1/sections");
       setSections(s);
       setSection((v) => (s.some((item) => item.id === v) ? v : s[0]?.id || ""));
-      const c = await api<any[]>("/v1/exam-cycles");
+      const c =
+        identity.roles.includes("ADMIN") ||
+        identity.managedSections.length ||
+        identity.teachingSections.length
+          ? await api<any[]>("/v1/exam-cycles")
+          : [];
       setCycles(c);
       setCycle(
         (v) =>
@@ -99,6 +123,37 @@ export default function Home() {
     }
   }
   const admin = me?.roles.includes("ADMIN");
+  const allowedSections = sections.filter(
+    (s) =>
+      !me ||
+      admin ||
+      view === "Overview" ||
+      view === "Marks entry" ||
+      (view === "Attendance"
+        ? me.attendanceSections.includes(s.id)
+        : me.managedSections.includes(s.id)),
+  );
+  const visibleCycles = cycles.filter(
+    (c) =>
+      !section ||
+      !sections.find((s) => s.id === section)?.academic_year_id ||
+      c.academic_year_id ===
+        sections.find((s) => s.id === section)?.academic_year_id,
+  );
+  useEffect(() => {
+    if (!me) return;
+    if (!canView(me, view)) setView("Overview");
+    if (!allowedSections.some((s) => s.id === section))
+      setSection(allowedSections[0]?.id ?? "");
+  }, [me, view, sections, section]);
+  useEffect(() => {
+    if (!visibleCycles.some((c) => c.id === cycle))
+      setCycle(
+        visibleCycles.find((c) => c.code === "SHASH_MAHI")?.id ??
+          visibleCycles[0]?.id ??
+          "",
+      );
+  }, [section, cycles, cycle]);
   if (checkingSession)
     return (
       <div className="session-loading" role="status">
@@ -180,17 +235,7 @@ export default function Home() {
         <div className="nav-caption">WORKSPACE</div>
         <nav aria-label="Main navigation">
           {navigation
-            .filter(
-              (v) =>
-                admin ||
-                ![
-                  "Academic setup",
-                  "Policies",
-                  "People & access",
-                  "Correction requests",
-                  "Audit history",
-                ].includes(v),
-            )
+            .filter((v) => canView(me, v))
             .map((v) => (
               <button
                 key={v}
@@ -233,7 +278,15 @@ export default function Home() {
             </span>
             <span className="account-name">
               {me.name}
-              <small>{admin ? "Administrator" : "Assigned staff"}</small>
+              <small>
+                {admin
+                  ? "Administrator"
+                  : me.managedSections.length
+                    ? "Mushrif"
+                    : me.teachingSections.length
+                      ? "Subject teacher"
+                      : "Ameer"}
+              </small>
             </span>
             <button
               className="secondary signout"
@@ -257,7 +310,7 @@ export default function Home() {
             </button>
           </div>
         </header>
-        <main id="main-content" tabIndex={-1}>
+        <main key={me.accessVersion} id="main-content" tabIndex={-1}>
           <div className={view === "Overview" ? "top overview-top" : "top"}>
             <div>
               <div className="eyebrow">
@@ -308,7 +361,7 @@ export default function Home() {
                 value={section}
                 onChange={(e) => setSection(e.target.value)}
               >
-                {sections.map((s) => (
+                {allowedSections.map((s) => (
                   <option value={s.id} key={s.id}>
                     {s.name} · {s.code}
                   </option>
@@ -320,7 +373,7 @@ export default function Home() {
                   value={cycle}
                   onChange={(e) => setCycle(e.target.value)}
                 >
-                  {cycles.map((c) => (
+                  {visibleCycles.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.title}
                     </option>
@@ -331,46 +384,6 @@ export default function Home() {
           )}
           {view === "Overview" && (
             <>
-              <div className="cards">
-                {[
-                  ["Active sections", sections.length, "Classes in your scope"],
-                  [
-                    "Exam cycles",
-                    cycles.length,
-                    "Configurable each academic year",
-                  ],
-                  [
-                    "Policy governance",
-                    "Review",
-                    "Approval before publication",
-                  ],
-                  [
-                    "Your workspace",
-                    "Connected",
-                    "A shared space for your staff",
-                  ],
-                ].map(([label, value, note], i) => (
-                  <div className="card" key={label}>
-                    <div className="card-top">
-                      <div className="label">{label}</div>
-                      <span className="card-icon">
-                        <Icon
-                          name={
-                            [
-                              "Academic setup",
-                              "Attendance",
-                              "Policies",
-                              "People & access",
-                            ][i]
-                          }
-                        />
-                      </span>
-                    </div>
-                    <div className="number">{value}</div>
-                    <small>{note}</small>
-                  </div>
-                ))}
-              </div>
               <div className="split">
                 <div className="panel">
                   <div className="panelhead">
@@ -380,13 +393,13 @@ export default function Home() {
                   <div
                     className="tablewrap"
                     tabIndex={0}
-                    aria-label="Scrollable records"
+                    aria-label="Your sections"
                   >
                     <table>
                       <thead>
                         <tr>
                           <th>Section</th>
-                          <th>Code</th>
+                          <th>Academic year / program</th>
                           <th>Next action</th>
                         </tr>
                       </thead>
@@ -396,16 +409,25 @@ export default function Home() {
                             <td>
                               <strong>{s.name}</strong>
                             </td>
-                            <td>{s.code}</td>
+                            <td>
+                              {s.year_label} · {s.program_name}
+                            </td>
                             <td>
                               <button
                                 className="secondary"
                                 onClick={() => {
                                   setSection(s.id);
-                                  setView("Attendance");
+                                  setView(
+                                    admin ||
+                                      me.attendanceSections.includes(s.id)
+                                      ? "Attendance"
+                                      : "Marks entry",
+                                  );
                                 }}
                               >
-                                Open attendance →
+                                {admin || me.attendanceSections.includes(s.id)
+                                  ? "Open attendance →"
+                                  : "Open assigned papers →"}
                               </button>
                             </td>
                           </tr>
@@ -414,31 +436,33 @@ export default function Home() {
                     </table>
                   </div>
                   {!sections.length && (
-                    <p className="empty">No assigned sections.</p>
+                    <p className="empty">
+                      No assigned sections. An administrator can assign your
+                      access.
+                    </p>
                   )}
                 </div>
-                <div className="panel integrity-panel">
-                  <span className="integrity-icon">
-                    <Icon name="Policies" />
-                  </span>
-                  <div className="eyebrow">Academic integrity</div>
-                  <h2>Every result needs a clear foundation.</h2>
+                <div className="panel">
+                  <div className="eyebrow">YOUR NEXT STEP</div>
+                  <h2>Quick actions</h2>
                   <p>
-                    Paper groups, grade thresholds, attendance credits and
-                    ranking rules are reviewed independently of marks.
+                    Open the tools available for your assigned responsibilities.
                   </p>
-                  <div className="notice">
-                    Unapproved policies and unresolved marks block official
-                    publication. Draft totals remain available for review.
+                  <div className="quick-actions">
+                    {navigation
+                      .filter((v) => v !== "Overview" && canView(me, v))
+                      .map((v) => (
+                        <button
+                          className="secondary"
+                          key={v}
+                          onClick={() => setView(v)}
+                        >
+                          <Icon name={v} />
+                          {v}
+                          <Icon name="arrow" />
+                        </button>
+                      ))}
                   </div>
-                  <button
-                    onClick={() => setView(admin ? "Policies" : "Marks entry")}
-                  >
-                    {admin
-                      ? "Review academic policies"
-                      : "Open assigned papers"}{" "}
-                    →
-                  </button>
                 </div>
               </div>
             </>
@@ -446,15 +470,40 @@ export default function Home() {
           {view === "Academic setup" && (
             <Setup {...common} reload={load} sections={sections} />
           )}
-          {view === "Attendance" && section && <Attendance {...common} />}
-          {view === "Exams & schemes" && section && cycle && (
-            <Exams {...common} admin={!!admin} />
+          {view === "Attendance" &&
+            section &&
+            allowedSections.some((s) => s.id === section) && (
+              <Attendance
+                {...common}
+                canManage={!!admin || me.managedSections.includes(section)}
+              />
+            )}
+          {view === "Exams & schemes" &&
+            section &&
+            cycle &&
+            allowedSections.some((s) => s.id === section) && (
+              <Exams
+                {...common}
+                admin={!!admin || me.managedSections.includes(section)}
+              />
+            )}
+          {view === "Marks entry" && (
+            <Marks
+              {...common}
+              admin={!!admin}
+              managedSections={me.managedSections}
+            />
           )}
-          {view === "Marks entry" && <Marks {...common} admin={!!admin} />}
           {view === "Policies" && <Policies {...common} />}
-          {view === "Results & reports" && section && cycle && (
-            <Results {...common} admin={!!admin} />
-          )}
+          {view === "Results & reports" &&
+            section &&
+            cycle &&
+            allowedSections.some((s) => s.id === section) && (
+              <Results
+                {...common}
+                admin={!!admin || me.managedSections.includes(section)}
+              />
+            )}
           {view === "People & access" && <People {...common} />}
           {view === "Audit history" && <Audit />}
           {view === "Correction requests" && <Corrections run={run} />}
@@ -738,11 +787,9 @@ function Setup({
               <label>
                 Role
                 <select name="role">
-                  {["CLASS_TEACHER", "AMEER", "ATTENDANCE_ASSISTANT"].map(
-                    (r) => (
-                      <option key={r}>{r}</option>
-                    ),
-                  )}
+                  {["MUSHRIF", "AMEER"].map((r) => (
+                    <option key={r}>{r}</option>
+                  ))}
                 </select>
               </label>
               <label>
@@ -767,7 +814,13 @@ function Setup({
     </>
   );
 }
-function Attendance({ section, run, busy, setMessage }: Common) {
+function Attendance({
+  section,
+  run,
+  busy,
+  setMessage,
+  canManage,
+}: Common & { canManage: boolean }) {
   const [date, setDate] = useState(
       new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" }),
     ),
@@ -786,6 +839,14 @@ function Attendance({ section, run, busy, setMessage }: Common) {
   }, [section, date]);
   return (
     <>
+      <details className="panel">
+        <summary>Attendance totals · academic year and exam sessions</summary>
+        <AttendanceTotals
+          section={section}
+          run={run}
+          refreshKey={sheet?.version}
+        />
+      </details>
       <div className="panel">
         <div className="panelhead">
           <h2>Daily attendance</h2>
@@ -844,6 +905,11 @@ function Attendance({ section, run, busy, setMessage }: Common) {
                       }
                     >
                       <option value="">Unmarked</option>
+                      {records[s.id] === "LATE" && (
+                        <option value="LATE" disabled>
+                          Legacy Late — review status
+                        </option>
+                      )}
                       {statuses.map((s) => (
                         <option key={s}>{s}</option>
                       ))}
@@ -898,58 +964,65 @@ function Attendance({ section, run, busy, setMessage }: Common) {
             Refresh
           </button>
         </div>
-        <form
-          className="row"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const reason = new FormData(e.currentTarget).get("reason");
-            void run(async () => {
-              await api(`/v1/sections/${section}/attendance/${date}/reopen`, {
-                method: "POST",
-                body: JSON.stringify({ reason }),
+        {canManage && (
+          <form
+            className="row"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const reason = new FormData(e.currentTarget).get("reason");
+              void run(async () => {
+                await api(`/v1/sections/${section}/attendance/${date}/reopen`, {
+                  method: "POST",
+                  body: JSON.stringify({ reason }),
+                });
+                await load();
               });
-              await load();
-            });
-          }}
-        >
-          <input
-            name="reason"
-            placeholder="Administrator correction reason"
-            required
-            minLength={5}
-          />
-          <button className="secondary">Reopen</button>
-        </form>
+            }}
+          >
+            <input
+              name="reason"
+              placeholder="Mushrif / administrator correction reason"
+              required
+              minLength={5}
+            />
+            <button className="secondary">Reopen</button>
+          </form>
+        )}
       </div>
       <div className="panel">
         <h2>Calendar & multiple dates</h2>
+        {canManage && (
+          <CalendarBuilder section={section} run={run} onSaved={load} />
+        )}
         <AttendancePermissions run={run} />
         <MultiDayGrid section={section} run={run} setMessage={setMessage} />
         <p>
           Explicit instructional dates drive the denominator. Add a day before
           taking attendance.
         </p>
-        <button
-          className="secondary"
-          onClick={() =>
-            void run(async () => {
-              await api(`/v1/sections/${section}/calendar`, {
-                method: "PUT",
-                body: JSON.stringify([
-                  {
-                    schoolDate: date,
-                    isInstructional: true,
-                    countsForAttendance: true,
-                    note: "",
-                  },
-                ]),
-              });
-              setMessage("Instructional calendar day saved.");
-            })
-          }
-        >
-          Add selected day to calendar
-        </button>
+        {canManage && (
+          <button
+            className="secondary"
+            onClick={() =>
+              void run(async () => {
+                await api(`/v1/sections/${section}/calendar`, {
+                  method: "PUT",
+                  body: JSON.stringify([
+                    {
+                      schoolDate: date,
+                      isInstructional: true,
+                      countsForAttendance: true,
+                      note: "",
+                    },
+                  ]),
+                });
+                setMessage("Instructional calendar day saved.");
+              })
+            }
+          >
+            Add selected day to calendar
+          </button>
+        )}
         <details>
           <summary>Atomic multiple-day entry</summary>
           <p>
@@ -1003,6 +1076,14 @@ function Exams({
   }, [section, cycle]);
   return (
     <>
+      {admin && (
+        <CurriculumPanel
+          section={section}
+          cycle={cycle}
+          run={run}
+          onApplied={load}
+        />
+      )}
       <div className="notice">
         {data?.approval
           ? "Approved scheme. Paper maxima and group membership are locked."
@@ -1021,6 +1102,7 @@ function Exams({
                 <th>Paper label (RTL)</th>
                 <th>Maximum</th>
                 <th>Type</th>
+                <th>Scheduled date</th>
               </tr>
             </thead>
             <tbody>
@@ -1030,6 +1112,39 @@ function Exams({
                   <td dir="rtl">{p.label}</td>
                   <td>{p.max}</td>
                   <td>{p.type}</td>
+                  <td>
+                    {admin && p.id ? (
+                      <form
+                        className="row"
+                        key={p.id + String(p.date)}
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const date = new FormData(e.currentTarget).get(
+                            "date",
+                          );
+                          void run(async () => {
+                            await api(`/v1/assessments/${p.id}/schedule`, {
+                              method: "PUT",
+                              body: JSON.stringify({ date }),
+                            });
+                            await load();
+                            setMessage("Paper date saved.");
+                          });
+                        }}
+                      >
+                        <input
+                          type="date"
+                          name="date"
+                          aria-label={`Schedule ${p.code}`}
+                          defaultValue={p.date ?? ""}
+                          required
+                        />
+                        <button className="secondary">Save date</button>
+                      </form>
+                    ) : (
+                      (p.date ?? "Not scheduled")
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1189,7 +1304,12 @@ function Exams({
     </>
   );
 }
-function Marks({ run, admin, setMessage }: Common & { admin: boolean }) {
+function Marks({
+  run,
+  admin,
+  setMessage,
+  managedSections,
+}: Common & { admin: boolean; managedSections: string[] }) {
   const [markReason, setMarkReason] = useState("");
   const [csv, setCsv] = useState("");
   const [imported, setImported] = useState<any>(null);
@@ -1209,6 +1329,7 @@ function Marks({ run, admin, setMessage }: Common & { admin: boolean }) {
   useEffect(() => {
     void run(load);
   }, [paper]);
+  const canManage = admin || managedSections.includes(data?.paper.section_id);
   return (
     <div className="panel">
       <div className="toolbar">
@@ -1219,7 +1340,8 @@ function Marks({ run, admin, setMessage }: Common & { admin: boolean }) {
         >
           {papers.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.paper_code} · {p.title} / {p.max_marks}
+              {p.section_name ?? ""} · {p.cycle_title ?? ""} · {p.paper_code} ·{" "}
+              {p.title} / {p.max_marks}
             </option>
           ))}
         </select>
@@ -1301,6 +1423,8 @@ function Marks({ run, admin, setMessage }: Common & { admin: boolean }) {
                   <th>Learner</th>
                   <th>State</th>
                   <th>Awarded / {data.paper.max_marks}</th>
+                  <th>Exam leave</th>
+                  <th>Given on time</th>
                 </tr>
               </thead>
               <tbody>
@@ -1322,7 +1446,7 @@ function Marks({ run, admin, setMessage }: Common & { admin: boolean }) {
                             state: event.target.value,
                             awarded:
                               event.target.value === "GRADED"
-                                ? (e.awarded ?? 0)
+                                ? (e.awarded ?? null)
                                 : null,
                           };
                           setData({ ...data, entries });
@@ -1363,6 +1487,42 @@ function Marks({ run, admin, setMessage }: Common & { admin: boolean }) {
                         }}
                       />
                     </td>
+                    <td>
+                      <label className="check-label">
+                        <input
+                          aria-label={`Exam leave ${e.student_number}`}
+                          type="checkbox"
+                          checked={!!e.onLeave}
+                          onChange={(event) => {
+                            const entries = [...data.entries];
+                            entries[i] = {
+                              ...e,
+                              onLeave: event.target.checked,
+                              onTime: event.target.checked ? false : e.onTime,
+                            };
+                            setData({ ...data, entries });
+                          }}
+                        />
+                        Leave / concession
+                      </label>
+                    </td>
+                    <td>
+                      <label className="check-label">
+                        <input
+                          aria-label={`Given on time ${e.student_number}`}
+                          type="checkbox"
+                          checked={e.onTime === true}
+                          disabled={e.onLeave}
+                          onChange={(event) => {
+                            const entries = [...data.entries];
+                            entries[i] = { ...e, onTime: event.target.checked };
+                            setData({ ...data, entries });
+                          }}
+                        />
+                        On time
+                      </label>
+                      {e.onTime == null && <small>Not confirmed</small>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1379,8 +1539,14 @@ function Marks({ run, admin, setMessage }: Common & { admin: boolean }) {
                         enrollmentId: e.enrollmentId,
                         state: e.state ?? "PENDING",
                         awarded:
-                          e.state === "GRADED" ? Number(e.awarded) : null,
+                          e.state === "GRADED" &&
+                          e.awarded != null &&
+                          e.awarded !== ""
+                            ? Number(e.awarded)
+                            : null,
                         version: e.version ?? 0,
+                        onLeave: e.onLeave ?? false,
+                        onTime: e.onTime ?? null,
                         ...(markReason ? { reason: markReason } : {}),
                       })),
                     }),
@@ -1407,7 +1573,7 @@ function Marks({ run, admin, setMessage }: Common & { admin: boolean }) {
             >
               Submit paper
             </button>
-            {admin && (
+            {canManage && (
               <button
                 onClick={() =>
                   void run(async () => {
@@ -1424,7 +1590,7 @@ function Marks({ run, admin, setMessage }: Common & { admin: boolean }) {
               </button>
             )}
           </div>
-          {admin && (
+          {canManage && (
             <form
               className="row"
               onSubmit={(e) => {
@@ -1460,29 +1626,7 @@ function Policies({ run, setMessage }: Common) {
   async function load() {
     const d = await api<any>("/v1/policies");
     setData(d);
-    setPolicy(
-      JSON.stringify(
-        d.config.draftPolicy ?? {
-          attendance: {
-            credits: Object.fromEntries(
-              statuses.map((s) => [s, { earned: null, possible: null }]),
-            ),
-            zeroDenominator: null,
-            backdateDays: null,
-            decimals: null,
-          },
-          grades: [],
-          eligibility: null,
-          ranking: { tie: null, topN: null, onlyPassing: null },
-          missing: { absent: null, exempt: null },
-          passMinimumPercent: null,
-          paperMinimumPercent: null,
-          rounding: null,
-        },
-        null,
-        2,
-      ),
-    );
+    setPolicy(JSON.stringify(d.config.draftPolicy ?? institutePolicy, null, 2));
   }
   useEffect(() => {
     void run(load);
@@ -1496,12 +1640,15 @@ function Policies({ run, setMessage }: Common) {
           : "Unapproved. No official grade, attendance percentage or ranking will be published."}
       </div>
       <p>
-        Enter institute-approved credits for all four attendance statuses, a
-        backdate window, contiguous grade bands covering 0–100 (exclusive final
-        bound 101), eligibility (ACTIVE_AT_WINDOW_END or
-        ANY_ENROLLED_IN_WINDOW), COMPETITION or DENSE ranking, missing mark
-        resolutions (ABSENT: BLOCK/ZERO; EXEMPT: BLOCK/EXCLUDE), pass rules, and
-        rounding (HALF_UP/HALF_EVEN/DOWN). No thresholds have been inferred.
+        The institutional pass minimum is 40%. Positions require more than 80%,
+        every paper on time, no exam leave, and a top-three shared position.
+        Present earns 1, Half earns 0.5, Absent earns 0 and Leave is excluded.
+        Review the remaining configuration, a backdate window, contiguous grade
+        bands covering 0–100 (exclusive final bound 101), eligibility
+        (ACTIVE_AT_WINDOW_END or ANY_ENROLLED_IN_WINDOW), COMPETITION or DENSE
+        ranking, missing mark resolutions (ABSENT: BLOCK/ZERO; EXEMPT:
+        BLOCK/EXCLUDE), pass rules, and rounding (HALF_UP/HALF_EVEN/DOWN). No
+        thresholds have been inferred.
       </p>
       <PolicyEditor value={policy} onChange={setPolicy} />
       <details>
@@ -1563,6 +1710,7 @@ function Results({
   }, [section, cycle]);
   return (
     <>
+      <StudentPerformance section={section} cycle={cycle} run={run} />
       <div className="panel">
         <h2>Preflight & publication</h2>
         <p>
@@ -1705,6 +1853,8 @@ function People({ run, setMessage }: Common) {
   return (
     <div className="panel">
       <h2>Staff access</h2>
+      <CreateAccount run={run} onSaved={load} />
+      <ChangePassword run={run} users={users} />
       <Invite run={run} />
       <details>
         <summary>Administrator-assisted password recovery</summary>
@@ -2076,45 +2226,7 @@ function SectionTools({
           </>
         )}
       </details>
-      <details>
-        <summary>Promote learners into a new academic year</summary>
-        <form
-          className="gridform"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const f = new FormData(e.currentTarget);
-            void run(async () => {
-              await api(`/v1/sections/${section}/rollover`, {
-                method: "POST",
-                body: JSON.stringify({
-                  targetSection: f.get("target"),
-                  joinedOn: f.get("date"),
-                  enrollmentIds: String(f.get("ids"))
-                    .split(",")
-                    .map((s) => s.trim()),
-                }),
-              });
-              setMessage(
-                "New enrollments created; historical records retained.",
-              );
-            });
-          }}
-        >
-          <label>
-            Target section ID
-            <input name="target" required />
-          </label>
-          <label>
-            New joining date
-            <input name="date" type="date" required />
-          </label>
-          <label>
-            Source enrollment IDs (comma separated)
-            <input name="ids" required />
-          </label>
-          <button>Promote selected learners</button>
-        </form>
-      </details>
+      <PromotionPicker section={section} run={run} />
     </>
   );
 }
@@ -2372,6 +2484,13 @@ function PolicyEditor({
       <input
         aria-label={label}
         type="number"
+        disabled={
+          label.endsWith(": earned credit") ||
+          label.endsWith(": possible credit") ||
+          label.startsWith("Overall pass minimum") ||
+          label.startsWith("Paper pass minimum") ||
+          label.startsWith("Show top positions")
+        }
         min={min}
         max={max}
         step="0.001"
@@ -2884,6 +3003,7 @@ function SchemeEditor({
       })}
       <button
         className="secondary"
+        disabled={s.groups.length >= 6}
         onClick={() =>
           change((c) =>
             c.groups.push({

@@ -14,6 +14,30 @@ import {
 const text = z.string().min(1),
   reason = z.object({ reason: z.string().min(5).max(1000) });
 const bodySchemas: Record<string, z.ZodType> = {
+  "POST /v1/users": z.object({
+    email: z.email(),
+    name: text,
+    password: z.string().min(12).max(128),
+  }),
+  "PUT /v1/users/:id/password": z.object({
+    password: z.string().min(12).max(128),
+    reason: text,
+  }),
+  "PUT /v1/sections/:section/curriculum": z.object({
+    scheme: schemeSchema,
+    version: z.number().int().nonnegative(),
+  }),
+  "POST /v1/sections/:section/subject-catalog": z.object({
+    code: text,
+    name: text,
+  }),
+  "PUT /v1/assessments/:id/schedule": z.object({ date: schoolDate }),
+  "PUT /v1/sections/:section/calendar/range": z.object({
+    from: schoolDate,
+    through: schoolDate,
+    weekdays: z.array(z.number().int().min(0).max(6)).min(1),
+    holidays: z.array(z.object({ date: schoolDate, note: text })).default([]),
+  }),
   "PUT /v1/attendance-permissions": z.object({
     days: z.number().int().min(0).max(366).nullable(),
     version: z.number().int().positive(),
@@ -72,7 +96,7 @@ const bodySchemas: Record<string, z.ZodType> = {
   }),
   "POST /v1/sections/:id/staff": z.object({
     user_id: uuid,
-    role: z.enum(["CLASS_TEACHER", "AMEER", "ATTENDANCE_ASSISTANT"]),
+    role: z.enum(["MUSHRIF", "CLASS_TEACHER", "AMEER", "ATTENDANCE_ASSISTANT"]),
     starts_on: schoolDate,
     ends_on: schoolDate.nullable().optional(),
     ameerOverrideReason: text.optional(),
@@ -217,6 +241,36 @@ export function openapi(app: FastifyInstance) {
             required: true,
             schema: { type: "string", format: "date" },
           })),
+        );
+      if (route.url.includes("/performance"))
+        parameters.push(
+          ...[
+            ...(route.url.startsWith("/v1/students/") ? ["yearId"] : []),
+            "cycleId",
+          ].map((name) => ({
+            name,
+            in: "query",
+            required: false,
+            schema: { type: "string", format: "uuid" },
+          })),
+        );
+      if (route.url.endsWith("/attendance-summary"))
+        parameters.push(
+          {
+            name: "period",
+            in: "query",
+            required: false,
+            schema: {
+              type: "string",
+              enum: ["YEAR", "SESSION", "PREVIOUS_SESSION"],
+            },
+          },
+          {
+            name: "cycleId",
+            in: "query",
+            required: false,
+            schema: { type: "string", format: "uuid" },
+          },
         );
       const schema = bodySchemas[`${method} ${route.url}`];
       const pdf = route.url.endsWith(".pdf"),

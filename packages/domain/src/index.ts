@@ -3,7 +3,7 @@ import { z } from "zod";
 export const attendanceStatuses = [
   "PRESENT",
   "ABSENT",
-  "LATE",
+  "HALF",
   "LEAVE",
 ] as const;
 export const markStates = [
@@ -34,8 +34,15 @@ export const markInput = z
     awarded: z.number().min(0).max(999999).nullable().optional(),
     reason: z.string().max(1000).optional(),
     version: z.number().int().min(0),
+    onLeave: z.boolean().default(false),
+    onTime: z.boolean().nullable().optional(),
   })
   .superRefine((v, c) => {
+    if (v.onLeave && v.onTime === true)
+      c.addIssue({
+        code: "custom",
+        message: "Exam leave cannot be marked on time",
+      });
     if ((v.state === "GRADED") !== (v.awarded != null))
       c.addIssue({
         code: "custom",
@@ -69,8 +76,7 @@ export const schemeSchema = z
           paperCodes: z.array(z.string()).min(1),
         }),
       )
-      .min(1)
-      .max(80),
+      .length(6),
   })
   .superRefine((s, c) => {
     const codes = s.papers.map((p) => p.code),
@@ -162,6 +168,8 @@ export type Scheme = z.infer<typeof schemeSchema>;
 export type Mark = {
   state: (typeof markStates)[number];
   awarded: number | null;
+  onLeave?: boolean;
+  onTime?: boolean | null;
 };
 export function calculate(
   scheme: Scheme,
@@ -228,7 +236,7 @@ export function calculate(
     grade: errors.length ? null : (band?.label ?? null),
     passing:
       errors.length === 0 &&
-      !!band?.pass &&
+      !!policy &&
       !!percent?.gte(policy?.passMinimumPercent ?? 101) &&
       !paperFailure,
     errors,
@@ -252,10 +260,13 @@ export function attendancePercent(
       : earned.div(possible).mul(100).toString(),
   };
 }
-export function rank<T extends { percent: string | null; passing: boolean }>(
-  rows: T[],
-  policy: Policy["ranking"],
-) {
+export function rank<
+  T extends {
+    percent: string | null;
+    passing: boolean;
+    onTimeEligible?: boolean;
+  },
+>(rows: T[], policy: Policy["ranking"]) {
   const sorted = [...rows].sort((a, b) =>
     new Decimal(b.percent ?? -1).cmp(a.percent ?? -1),
   );
@@ -264,7 +275,13 @@ export function rank<T extends { percent: string | null; passing: boolean }>(
     eligiblePosition = 0,
     previous: string | null = null;
   return sorted.map((row) => {
-    if (policy.onlyPassing && !row.passing) return { ...row, rank: null };
+    if (
+      row.percent === null ||
+      new Decimal(row.percent).lte(80) ||
+      row.onTimeEligible !== true ||
+      (policy.onlyPassing && !row.passing)
+    )
+      return { ...row, rank: null };
     eligiblePosition++;
     if (row.percent !== previous) {
       dense++;
@@ -272,7 +289,7 @@ export function rank<T extends { percent: string | null; passing: boolean }>(
       previous = row.percent;
     }
     const n = policy.tie === "DENSE" ? dense : position;
-    return { ...row, rank: policy.topN !== null && n > policy.topN ? null : n };
+    return { ...row, rank: n > Math.min(policy.topN ?? 3, 3) ? null : n };
   });
 }
 export function csvCell(value: unknown) {
@@ -285,4 +302,52 @@ export function sumMarks(values: (number | string)[]) {
   return values
     .reduce<Decimal>((total, value) => total.plus(value), new Decimal(0))
     .toNumber();
+}
+
+export const classLevelNames = [
+  "پریپ اولیٰ",
+  "درجہ اولیٰ",
+  "درجہ ثانیہ",
+  "درجہ ثالثہ",
+  "درجہ رابعہ",
+  "درجہ خامسہ",
+  "درجہ سادسہ",
+  "درجہ سابعہ",
+  "دورہ حدیث شریف",
+] as const;
+export const attendancePolicySchema = policySchema.shape.attendance;
+export const instituteAttendance = {
+  credits: {
+    PRESENT: { earned: 1, possible: 1 },
+    ABSENT: { earned: 0, possible: 1 },
+    HALF: { earned: 0.5, possible: 1 },
+    LEAVE: { earned: 0, possible: 0 },
+  },
+  zeroDenominator: "SHOW_NA" as const,
+  backdateDays: 0,
+  decimals: 1,
+};
+export const institutePolicy: Policy = {
+  attendance: instituteAttendance,
+  grades: [
+    { label: "Fail", min: 0, max: 40, pass: false },
+    { label: "Pass", min: 40, max: 101, pass: true },
+  ],
+  eligibility: "ANY_ENROLLED_IN_WINDOW",
+  ranking: { tie: "COMPETITION", topN: 3, onlyPassing: true },
+  missing: { absent: "BLOCK", exempt: "BLOCK" },
+  passMinimumPercent: 40,
+  paperMinimumPercent: null,
+  rounding: "HALF_UP",
+};
+export function positionEligibility(
+  scheme: Scheme,
+  marks: Record<string, Mark>,
+) {
+  return scheme.papers.every(
+    (p) =>
+      marks[p.code]?.state === "GRADED" &&
+      marks[p.code]?.onTime === true &&
+      marks[p.code]?.onLeave !== true,
+  );
 }
