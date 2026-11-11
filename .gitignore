@@ -14,3 +14,4 @@ test-results/
 __pycache__/
 *.pyc
 .DS_Store
+/docker-packages/*.deb

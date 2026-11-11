@@ -34,6 +34,27 @@ If you already use Git, `git pull --ff-only origin master` in a clean checkout o
 
 ## 3. Build and start
 
+If you already downloaded the Noto font packages, keep them in this folder layout:
+
+```text
+Hikmah-Institute-master/
+  Dockerfile
+  scripts/install-fonts.sh
+  docker-packages/
+    fonts-noto-core_20201225-1_all.deb
+    fonts-noto-extra_20201225-1_all.deb
+```
+
+Use the latest `Dockerfile` and `scripts/install-fonts.sh` together. For an existing ZIP-based project, download just those two updated files from GitHub using **Download raw file** and replace the corresponding files in your existing project. Preserve `docker-packages/` and your existing `.env.demo`. No Homebrew or Git installation is needed.
+
+Confirm the two archives are present:
+
+```sh
+ls -lh docker-packages/*.deb
+```
+
+Docker installs these `all`-architecture packages inside its Linux container; they work on Apple silicon. The build prints `Using local Noto font packages from docker-packages; no Noto archive download.` The archives are excluded from the final application image. Other uncached dependencies still require Internet access. With neither local archive present the build downloads fonts normally; with an incomplete or invalid local pair it stops with a clear error. See [local font packages](../docker-packages/README.md).
+
 From the project folder:
 
 ```sh

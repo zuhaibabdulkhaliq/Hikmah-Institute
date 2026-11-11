@@ -12,6 +12,8 @@ The [current academic rules and workflows](docs/ACADEMIC_RULES.md) document Pres
 
 For Apple silicon Macs (M1/M2/M3/M4, including M4 Pro), follow [the Mac execution guide](docs/MACOS-APPLE-SILICON.md). Homebrew and a host Node installation are not required for the web/API/database demo.
 
+Already downloaded `fonts-noto-core` and `fonts-noto-extra`? Put both `.deb` archives in [`docker-packages/`](docker-packages/README.md); the updated Dockerfile installs them locally instead of downloading Noto again.
+
 For an Intel MacBook Pro 2017 on Ventura 13.7.8, follow [the Ventura guide](docs/MACOS-VENTURA.md) for Docker compatibility first. With a working compatible Docker engine, Node.js, Python, fonts and PostgreSQL can all run in containers:
 
 ```sh
