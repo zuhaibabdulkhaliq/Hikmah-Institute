@@ -92,6 +92,14 @@ Find `HIKMAH_DEMO_PASSWORD=` and copy only the value after `=`. Sign in with:
 
 All synthetic accounts use the generated `HIKMAH_DEMO_PASSWORD`. Keep the configuration file private and preserve its credential values after the first setup; the database volume keeps the original credentials and accounts. Finder hides dotfiles; `open -e .env.demo` opens it directly.
 
+If the administrator password is rejected, first confirm the email is `admin@hikmah.example` and that you copied only `HIKMAH_DEMO_PASSWORD`, not the database password or authentication secret. Restarting the demo does not change existing account passwords. If the configuration value no longer matches the saved demo account, keep the services running and run:
+
+```sh
+bash scripts/reset-demo-password.sh
+```
+
+This uses the current `.env.demo` value to reset only the synthetic administrator's password, revokes that administrator's sessions and records the recovery in the audit log. It preserves students, attendance, marks, policies and other accounts. It requires the existing image and running database but does not rebuild or download fonts. For an older ZIP checkout, download [scripts/reset-demo-password.sh](https://github.com/zuhaibabdulkhaliq/Hikmah-Institute/blob/master/scripts/reset-demo-password.sh) using **Download raw file** and save it in your existing `scripts` folder first. Reload the login page and sign in again. Do not delete the database volume to recover a password.
+
 ## 5. Check the application
 
 Sign in as the administrator and check the dashboard, Academic setup, Attendance, Exams & schemes, Results & reports and Policies. The seed contains 20 synthetic learners; its first sample result has a raw total of `513 / 600`.
@@ -132,7 +140,7 @@ Keep `.env.demo` and the Docker database volume. Do not remove the volume or use
 | `node: command not found` on the Mac                         | Use the Docker commands above; host Node is not required for this demo.                                                                                               |
 | Port 3000 is already allocated                               | Run `bash scripts/demo.sh stop`, open `.env.demo`, change only `HIKMAH_DEMO_PORT=3000` to `HIKMAH_DEMO_PORT=3002`, then start again and open `http://localhost:3002`. |
 | Build ends with exit 137 or reports insufficient memory/disk | Check Docker Desktop resource settings and available storage, close heavy apps, increase Docker memory if possible, then retry.                                       |
-| Wrong password after downloading a new ZIP                   | Use the original `.env.demo` for the retained database; do not regenerate or change its credentials to match existing accounts.                                       |
+| Administrator password rejected                              | Confirm the email and password field above, then use `bash scripts/reset-demo-password.sh` to recover the synthetic administrator without deleting data.              |
 | Startup times out or a service is unhealthy                  | Run `bash scripts/demo.sh status` and `bash scripts/demo.sh logs`; share the relevant error with passwords, tokens and database connection strings removed.           |
 
 The web port is bound to the Mac's loopback address. This setup is for local synthetic demonstration, not public hosting or access from a phone.

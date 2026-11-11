@@ -25,6 +25,8 @@ bash scripts/demo.sh stop
 
 This uses a separate synthetic demo database, retains data when stopped, and keeps private generated credentials outside Git and image layers. An unsupported older Docker Desktop is a local-demo workaround, not a production recommendation. Current supported macOS/Linux machines can use the same container workflow with a maintained Docker release.
 
+If the saved demo administrator password no longer matches `.env.demo`, run `bash scripts/reset-demo-password.sh` with the database running. This restores only `admin@hikmah.example` to the current `HIKMAH_DEMO_PASSWORD`, revokes its sessions and records an audit event without deleting academic data or rebuilding the image. See the [Mac sign-in and recovery instructions](docs/MACOS-APPLE-SILICON.md#4-sign-in).
+
 ## Local setup
 
 Prerequisites: Node 24, pnpm **10.28.2**, Docker Compose, Python 3.12+, Pango libraries and Noto Arabic/Urdu fonts. On Debian/Ubuntu install `python3-venv libpango-1.0-0 libpangoft2-1.0-0 fonts-noto-core fonts-noto-extra`. Use the existing checkout; there is no need for another Git worktree.
