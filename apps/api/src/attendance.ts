@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
+import { legacyCalendarDays } from "./calendar.ts";
 import { z } from "zod";
 import { createHash } from "node:crypto";
 import { pool, transaction, type DB } from "./db.ts";
@@ -175,28 +176,7 @@ export function attendance(app: FastifyInstance) {
       .min(1)
       .max(366)
       .parse(req.body);
-    return transaction(async (db) => {
-      const year = (
-        await db.query(
-          "SELECT y.start_date::text,y.end_date::text FROM academic_years y JOIN sections s ON s.academic_year_id=y.id WHERE s.id=$1",
-          [id],
-        )
-      ).rows[0];
-      check(
-        d.every(
-          (v) =>
-            v.schoolDate >= year.start_date && v.schoolDate <= year.end_date,
-        ),
-        "Calendar dates must be within the academic year",
-      );
-      for (const v of d)
-        await db.query(
-          "INSERT INTO section_calendar_days(section_id,school_date,is_instructional,counts_for_attendance,calendar_note) VALUES($1,$2,$3,$4,$5) ON CONFLICT(section_id,school_date) DO UPDATE SET is_instructional=$3,counts_for_attendance=$4,calendar_note=$5",
-          [id, v.schoolDate, v.isInstructional, v.countsForAttendance, v.note],
-        );
-      await audit(db, a, "CALENDAR", "sections", id, null, d);
-      return { ok: true };
-    });
+    return transaction((db) => legacyCalendarDays(db, a, id, d));
   });
   app.get("/v1/sections/:id/attendance/:date", async (req) => {
     const a = await actor(req),

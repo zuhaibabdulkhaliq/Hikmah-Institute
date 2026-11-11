@@ -43,6 +43,16 @@ try {
     .getByRole("button", { name: "Attendance", exact: true })
     .click();
   await page.getByRole("heading", { name: "Daily attendance" }).waitFor();
+  const sectionResponse = await page.request.get(
+    new URL("/v1/sections", page.url()).toString(),
+  );
+  const seedSection = (await sectionResponse.json()).find(
+    (s: any) => s.year_label === "1448 synthetic" && s.code === "A",
+  );
+  if (!seedSection) throw new Error("Missing synthetic Section A fixture");
+  await page
+    .getByLabel("Section", { exact: true })
+    .selectOption(seedSection.id);
   const totals = page.getByText(
     "Attendance totals · academic year and exam sessions",
     { exact: true },
@@ -219,6 +229,7 @@ try {
     .waitFor();
   await expect(page.getByRole("navigation").getByRole("button")).toHaveText([
     "Overview",
+    "Academic calendar",
     "Attendance",
     "Exams & schemes",
     "Marks entry",
@@ -277,7 +288,7 @@ try {
   });
   if (errors.length) throw new Error(errors.join("\n"));
   console.log(
-    "PASS: login, attendance, raw results, policies, all 10 views at 1440/1024/820/768/390/320px without page overflow, keyboard skip link, Ameer/Mushrif/subject-teacher navigation and scoped re-login, sign-out and activation. Screenshots in .data/screenshots.",
+    "PASS: login, attendance, raw results, policies, all 11 views at 1440/1024/820/768/390/320px without page overflow, keyboard skip link, Ameer/Mushrif/subject-teacher navigation and scoped re-login, sign-out and activation. Screenshots in .data/screenshots.",
   );
 } finally {
   await browser.close();

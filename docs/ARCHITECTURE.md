@@ -12,6 +12,8 @@
 
 See [the current academic rules](ACADEMIC_RULES.md) for the latest role matrix, attendance formula and position eligibility.
 
+The [Academic calendar](ACADEMIC_CALENDAR.md) page uses `GET /v1/calendars` for scoped class metadata, `GET /v1/sections/:id/academic-calendar` for month dates/saved rules, and `POST /v1/calendars/preview` followed by `POST /v1/calendars/apply` for changes. Shared Zod schemas and types live in `packages/domain/src/calendar.ts`. Migration 011 adds effective-dated weekly patterns, per-date exceptions and section calendar versions. Serializable batch writes lock sections in a stable order, split overlapping patterns, preserve exceptions and materialize the existing attendance calendar. Preview hashes include calendar versions, rules, exceptions and saved attendance versions. Legacy calendar endpoints update the same overrides/versions. Pattern date bounds, weekday uniqueness and non-overlap also have database guards.
+
 ## Integrity and permissions
 
 Better Auth owns password hashing and session handling; application accounts are mapped through `auth_subject`. Public signup is disabled. Every request reloads active application-user and current role/assignment state using the institute timezone. Ameer section checks, subject-paper checks, effective assignment dates, active academic years for attendance/mark entry, and administrator or assigned-Mushrif publication are enforced server-side.

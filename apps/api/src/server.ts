@@ -1,4 +1,5 @@
 import { markImport } from "./mark-import.ts";
+import { calendars } from "./calendar.ts";
 import { openapi } from "./openapi.ts";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
@@ -97,6 +98,7 @@ export async function buildApp() {
   openapi(app);
   academics(app);
   attendance(app);
+  calendars(app);
   exams(app);
   curricula(app);
   performance(app);

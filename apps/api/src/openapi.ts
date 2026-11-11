@@ -10,10 +10,14 @@ import {
   policySchema,
   uuid,
   schoolDate,
+  calendarChangeSchema,
+  calendarApplySchema,
 } from "../../../packages/domain/src/index.ts";
 const text = z.string().min(1),
   reason = z.object({ reason: z.string().min(5).max(1000) });
 const bodySchemas: Record<string, z.ZodType> = {
+  "POST /v1/calendars/preview": calendarChangeSchema,
+  "POST /v1/calendars/apply": calendarApplySchema,
   "POST /v1/users": z.object({
     email: z.email(),
     name: text,

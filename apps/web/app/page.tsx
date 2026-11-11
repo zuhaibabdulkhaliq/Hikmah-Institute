@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import {
   AttendanceTotals,
-  CalendarBuilder,
   CurriculumPanel,
   StudentPerformance,
   CreateAccount,
@@ -11,6 +10,7 @@ import {
 } from "../components/academic-tools";
 import { sumMarks, institutePolicy } from "@hikmah/domain";
 import { AuthFrame, Brand, Icon } from "../components/workspace-ui";
+import { AcademicCalendarPage } from "../components/academic-calendar";
 import {
   createClient,
   type Identity,
@@ -24,6 +24,7 @@ const api = createClient("", undefined, () => {
 const navigation = [
   "Overview",
   "Academic setup",
+  "Academic calendar",
   "Attendance",
   "Exams & schemes",
   "Marks entry",
@@ -38,6 +39,7 @@ function canView(me: Identity | null, view: string) {
   if (!me) return false;
   if (me.roles.includes("ADMIN") || view === "Overview") return true;
   if (view === "Attendance") return me.attendanceSections.length > 0;
+  if (view === "Academic calendar") return me.managedSections.length > 0;
   if (view === "Marks entry")
     return me.teachingSections.length > 0 || me.managedSections.length > 0;
   if (["Exams & schemes", "Results & reports"].includes(view))
@@ -470,12 +472,22 @@ export default function Home() {
           {view === "Academic setup" && (
             <Setup {...common} reload={load} sections={sections} />
           )}
+          {view === "Academic calendar" && (
+            <AcademicCalendarPage
+              today={me.today}
+              onAttendance={(id) => {
+                setSection(id);
+                setView("Attendance");
+              }}
+            />
+          )}
           {view === "Attendance" &&
             section &&
             allowedSections.some((s) => s.id === section) && (
               <Attendance
                 {...common}
                 canManage={!!admin || me.managedSections.includes(section)}
+                onOpenCalendar={() => setView("Academic calendar")}
               />
             )}
           {view === "Exams & schemes" &&
@@ -820,7 +832,8 @@ function Attendance({
   busy,
   setMessage,
   canManage,
-}: Common & { canManage: boolean }) {
+  onOpenCalendar,
+}: Common & { canManage: boolean; onOpenCalendar: () => void }) {
   const [date, setDate] = useState(
       new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" }),
     ),
@@ -990,39 +1003,18 @@ function Attendance({
         )}
       </div>
       <div className="panel">
-        <h2>Calendar & multiple dates</h2>
+        <h2>Multiple-date attendance</h2>
         {canManage && (
-          <CalendarBuilder section={section} run={run} onSaved={load} />
-        )}
-        <AttendancePermissions run={run} />
-        <MultiDayGrid section={section} run={run} setMessage={setMessage} />
-        <p>
-          Explicit instructional dates drive the denominator. Add a day before
-          taking attendance.
-        </p>
-        {canManage && (
-          <button
-            className="secondary"
-            onClick={() =>
-              void run(async () => {
-                await api(`/v1/sections/${section}/calendar`, {
-                  method: "PUT",
-                  body: JSON.stringify([
-                    {
-                      schoolDate: date,
-                      isInstructional: true,
-                      countsForAttendance: true,
-                      note: "",
-                    },
-                  ]),
-                });
-                setMessage("Instructional calendar day saved.");
-              })
-            }
-          >
-            Add selected day to calendar
+          <button className="secondary" onClick={onOpenCalendar}>
+            Open academic calendar
           </button>
         )}
+        <p>
+          Academic days and holidays are configured on the Academic calendar
+          page before attendance is entered.
+        </p>
+        <AttendancePermissions run={run} />
+        <MultiDayGrid section={section} run={run} setMessage={setMessage} />
         <details>
           <summary>Atomic multiple-day entry</summary>
           <p>

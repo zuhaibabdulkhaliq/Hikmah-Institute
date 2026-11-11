@@ -4,6 +4,8 @@ import Image from "next/image";
 const paths: Record<string, string> = {
   Overview: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
   "Academic setup": "M3 10 12 4l9 6-9 6-9-6z M6 12v6l6 3 6-3v-6",
+  "Academic calendar":
+    "M8 2v4 M16 2v4 M3 9h18 M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2z M7 13h3 M14 13h3 M7 17h3",
   Attendance:
     "M8 2v4 M16 2v4 M3 9h18 M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2z M8 14l3 3 5-5",
   "Exams & schemes":

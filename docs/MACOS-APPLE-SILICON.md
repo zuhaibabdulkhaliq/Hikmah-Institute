@@ -112,7 +112,7 @@ Run the full automated checks from Terminal in the same folder:
 bash scripts/demo.sh test
 ```
 
-The command rebuilds the current source, runs lint/type checks, runs the database/PDF integration tests, and builds the web/API applications. It returns to the prompt with exit code zero on success. You should see 31 tests pass and no test failures. The test runner creates and drops its own temporary database, preserving the demo database. This command does not run native-device or browser automation; use the manual browser steps above on your Mac.
+The command rebuilds the current source, runs lint/type checks, runs the database/PDF integration tests, and builds the web/API applications. It returns to the prompt with exit code zero on success. You should see 36 tests pass and no test failures. The test runner creates and drops its own temporary database, preserving the demo database. This command does not run native-device or browser automation; use the manual browser steps above on your Mac.
 
 ## 6. Status, stopping and starting again
 
@@ -151,7 +151,7 @@ The Expo app is in `apps/mobile`; the Docker demo does not start Metro, an iOS s
 
 ## Updating an existing demo
 
-Keep your original `.env.demo` and Docker database volume. If using Git in a clean checkout on `master`, stop the services, run `git pull --ff-only origin master`, then run `bash scripts/demo.sh start` to rebuild and restart. For ZIP downloads, stop the services and rename the old project folder before extracting a fresh ZIP. Copy its original `.env.demo` into the new project folder before starting; Command-Shift-Period in Finder reveals hidden files. Do not generate different credentials for the retained database.
+Keep your original `.env.demo` and Docker database volume. If using Git in a clean checkout on `master`, stop the services, run `git pull --ff-only origin master`, then run `bash scripts/demo.sh start` to rebuild and restart. For ZIP downloads, stop the services and rename the old project folder before extracting a fresh ZIP. Copy its original `.env.demo` into the new project folder before starting. If you use local fonts, also copy both `.deb` archives from the old `docker-packages/` into the new `docker-packages/` before building; Command-Shift-Period in Finder reveals hidden files. Do not generate different credentials for the retained database.
 
 ## Use your original logo
 

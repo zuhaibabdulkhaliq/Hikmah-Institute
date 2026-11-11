@@ -14,6 +14,8 @@ For Apple silicon Macs (M1/M2/M3/M4, including M4 Pro), follow [the Mac executio
 
 Already downloaded `fonts-noto-core` and `fonts-noto-extra`? Put both `.deb` archives in [`docker-packages/`](docker-packages/README.md); the updated Dockerfile installs them locally instead of downloading Noto again.
 
+Configure different teaching weeks by program, class level and section on the separate **Academic calendar** page. It supports shared holidays, vacations, extra classes, effective dates, schedule copying and a preview before changes. See [the calendar guide](docs/ACADEMIC_CALENDAR.md).
+
 For an Intel MacBook Pro 2017 on Ventura 13.7.8, follow [the Ventura guide](docs/MACOS-VENTURA.md) for Docker compatibility first. With a working compatible Docker engine, Node.js, Python, fonts and PostgreSQL can all run in containers:
 
 ```sh

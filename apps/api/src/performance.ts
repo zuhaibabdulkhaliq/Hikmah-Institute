@@ -1,9 +1,10 @@
 import type { FastifyInstance } from "fastify";
+import { legacyCalendarRange } from "./calendar.ts";
 import { z } from "zod";
 import Decimal from "decimal.js";
 import { spawn } from "node:child_process";
 import { pool, transaction, type DB } from "./db.ts";
-import { actor, check, scope, manage, audit, type Actor } from "./security.ts";
+import { actor, check, scope, audit, type Actor } from "./security.ts";
 import {
   uuid,
   schoolDate,
@@ -496,42 +497,7 @@ export function performance(app: FastifyInstance) {
         (Date.parse(d.through) - Date.parse(d.from)) / 86400000 < 1100,
       "Choose a valid calendar range of at most three years",
     );
-    return transaction(async (db) => {
-      await manage(db, a, section);
-      const y = (
-        await db.query(
-          "SELECT y.start_date::text,y.end_date::text FROM academic_years y JOIN sections s ON s.academic_year_id=y.id WHERE s.id=$1",
-          [section],
-        )
-      ).rows[0];
-      check(
-        d.from >= y.start_date && d.through <= y.end_date,
-        "Calendar range must be inside the academic year",
-      );
-      let count = 0;
-      for (
-        let day = Date.parse(d.from);
-        day <= Date.parse(d.through);
-        day += 86400000
-      ) {
-        const date = new Date(day),
-          iso = date.toISOString().slice(0, 10),
-          holiday = d.holidays.find((h) => h.date === iso),
-          academic = d.weekdays.includes(date.getUTCDay()) && !holiday;
-        await db.query(
-          "INSERT INTO section_calendar_days(section_id,school_date,is_instructional,counts_for_attendance,calendar_note) VALUES($1,$2,$3,$3,$4) ON CONFLICT(section_id,school_date) DO UPDATE SET is_instructional=$3,counts_for_attendance=$3,calendar_note=$4",
-          [
-            section,
-            iso,
-            academic,
-            holiday?.note ?? (academic ? "Academic day" : "Non-academic day"),
-          ],
-        );
-        count++;
-      }
-      await audit(db, a, "CALENDAR_RANGE", "sections", section, null, d);
-      return { days: count };
-    });
+    return transaction((db) => legacyCalendarRange(db, a, section, d));
   });
   app.get("/v1/students/:student/performance", async (req) => {
     const a = await actor(req),

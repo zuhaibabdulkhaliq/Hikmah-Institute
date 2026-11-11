@@ -1,5 +1,21 @@
 # Implementation and verification record
 
+## 11 November 2026 — flexible academic calendar
+
+Added a separate **Academic calendar** page with academic-year/program/level filters, individually selectable sections, saved 0–7-day teaching weeks, schedule copying, effective dates, shared vacations, extra teaching days, instructional events without attendance, and restoration of exceptions. Administrators manage all classes; Mushrif manage their assigned sections. Ameer and subject-only staff cannot edit calendars.
+
+Migration `011_flexible_academic_calendar.sql` preserves existing calendar dates, attendance and publications, stores weekly ranges and protected per-date exceptions, and adds calendar versions. Changes split only overlapping weekly ranges. Preview/apply uses serializable transactions, ordered section locks and a state hash that also detects intervening attendance edits. Changing whether an already-recorded date counts requires explicit acknowledgement. Legacy endpoints update the same versions/overrides; database triggers reject overlapping patterns, duplicate weekdays and out-of-year rules/exceptions. No institute timetable is inferred during migration.
+
+Verification completed:
+
+- Docker demo check: lint, shared/API/web/mobile TypeScript, all migrations, **36 tests passed, 0 failed, 0 skipped**, PostgreSQL/PDF integration and production web/API builds.
+- Five new calendar integration tests cover different 1–7-day weeks, program/level isolation, holidays and extra days surviving edits, seasonal range splitting, restore, legacy compatibility, permissions, batch rollback, closed-year limits, invalid dates/duplicates, database guards, stale previews and correct Half/Leave arithmetic after calendar changes. Attendance records and recovery audit history remain intact.
+- Real Chromium portal smoke: all **11 views** at 1440/1024/820/768/390/320px without page overflow, plus Ameer/Mushrif/subject-only navigation.
+- Real Chromium calendar workflow: distinct Shaam weeks, seven-day Sabah week, a vacation across three selected classes, acknowledgement for an existing submitted attendance date, retained attendance after reclassification, copying/seasonal edits, exception preservation, preview invalidation after form edits, restore and responsive layouts. Synthetic screenshots are in `docs/images/academic-calendar-*.png`.
+- The rebuilt Docker services started healthy against the existing synthetic demo volume. The local Noto package installation layer was reused from cache.
+
+Use [the calendar guide](ACADEMIC_CALENDAR.md) to configure the actual institute schedules. Program/level filters batch existing sections; newly created sections need explicit configuration or a copied schedule. Physical Mac/Safari/iPad testing, operator acceptance and the existing production/native rollout checks remain outside the managed Linux/Chromium verification. No official result or public deployment was published by this calendar change.
+
 Date: 6 November 2026. Original authority: `Hikmah_Final_Blueprint/agent/BUILD_THIS_APP.md`, requirements, API contract, both SQL migrations and synthetic examples. Original specification assets were left unchanged.
 
 This is a working implementation of the core academic workflow across the requested stack. **It is not a declaration that every release gate or all 22 acceptance criteria have passed.** Native device E2E, institute sign-off, production operational validation and the implementation differences below remain outstanding.
