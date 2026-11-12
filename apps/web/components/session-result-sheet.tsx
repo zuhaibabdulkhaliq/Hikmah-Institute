@@ -38,6 +38,7 @@ export function SessionResultSheet({
     [refresh, setRefresh] = useState(0);
   const [loading, setLoading] = useState(false),
     [busy, setBusy] = useState(false),
+    [sheetError, setSheetError] = useState(""),
     [error, setError] = useState(""),
     [message, setMessage] = useState("");
   const [csv, setCSV] = useState(""),
@@ -53,6 +54,8 @@ export function SessionResultSheet({
     context = useRef(section + cycle);
   const operation = useRef(0),
     fileRead = useRef(0);
+  const feedback = useRef<HTMLDivElement>(null),
+    previewRegion = useRef<HTMLElement>(null);
   const path = `/v1/exam-cycles/${cycle}/sections/${section}`;
   const inputKey = JSON.stringify([section, cycle, csv, reason]);
   const current = preview?.key === inputKey ? preview.data : null;
@@ -68,6 +71,7 @@ export function SessionResultSheet({
     setPreview(null);
     setAck(false);
     setError("");
+    setSheetError("");
     setMessage("");
     if (fileInput.current) fileInput.current.value = "";
   }, [section, cycle]);
@@ -75,6 +79,7 @@ export function SessionResultSheet({
     if (!section || !cycle) return;
     const controller = new AbortController();
     setLoading(true);
+    setSheetError("");
     setSheet(null);
     void api<ResultSheetData>(path + `/result-sheet?source=${source}`, {
       signal: controller.signal,
@@ -83,19 +88,31 @@ export function SessionResultSheet({
         if (!controller.signal.aborted) setSheet(data);
       })
       .catch((e) => {
-        if (!controller.signal.aborted) setError(e.message);
+        if (!controller.signal.aborted) setSheetError(e.message);
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
   }, [section, cycle, source, refresh]);
+  useEffect(() => {
+    const target =
+      error || message
+        ? feedback.current
+        : current
+          ? previewRegion.current
+          : null;
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ block: "nearest" });
+  }, [error, message, current]);
   async function readFile(file: File | undefined) {
     const token = ++fileRead.current;
     setPreview(null);
     setCSV("");
     setAck(false);
     setError("");
+    setMessage("");
     setFileName(file?.name ?? "");
     if (!file) return;
     const target = section + cycle;
@@ -216,7 +233,7 @@ export function SessionResultSheet({
             value={source}
             onChange={(e) => {
               setSource(e.target.value);
-              setError("");
+              setSheetError("");
             }}
           >
             <option value="AUTO">
@@ -231,7 +248,7 @@ export function SessionResultSheet({
           disabled={loading}
           onClick={() => {
             setRefresh((v) => v + 1);
-            setError("");
+            setSheetError("");
           }}
         >
           Refresh sheet
@@ -253,14 +270,9 @@ export function SessionResultSheet({
           </>
         )}
       </div>
-      {error && (
+      {sheetError && (
         <p role="alert" className="notice error">
-          {error}
-        </p>
-      )}
-      {message && (
-        <p role="status" className="notice success">
-          {message}
+          {sheetError}
         </p>
       )}
       {loading && <p role="status">Loading session sheet…</p>}
@@ -448,6 +460,7 @@ export function SessionResultSheet({
           are always calculated by the system.
         </p>
         <form
+          noValidate
           onSubmit={(e) => {
             e.preventDefault();
             void validate();
@@ -488,8 +501,23 @@ export function SessionResultSheet({
             {busy ? "Working…" : "Validate uploaded CSV"}
           </button>
         </form>
+        <div ref={feedback} tabIndex={-1}>
+          {error && (
+            <p role="alert" className="notice error">
+              {error}
+            </p>
+          )}
+          {message && (
+            <p role="status" className="notice success">
+              {message}
+            </p>
+          )}
+          {busy && <p role="status">Working… please wait.</p>}
+        </div>
         {current && (
           <section
+            ref={previewRegion}
+            tabIndex={-1}
             className="session-import-preview"
             aria-label="Marks import preview"
           >

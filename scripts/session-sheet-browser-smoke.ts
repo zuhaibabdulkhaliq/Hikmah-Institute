@@ -148,7 +148,12 @@ try {
   rows[8][4] = "0";
   rows[9][flag] = "YES";
   rows[9][flag + 1] = "NO";
-  const correct = structuredClone(rows);
+  // Spreadsheet editors pad the short reference rows to the table's full width.
+  const correct = structuredClone(rows).map((row) => [
+    ...row,
+    ...Array(rows[6].length - row.length).fill(""),
+  ]);
+  correct.push(Array(rows[6].length).fill(""));
   rows[7][4] = "999";
   const file = panel.getByLabel("Completed marks CSV", { exact: true });
   await file.setInputFiles({
@@ -156,9 +161,36 @@ try {
     mimeType: "text/csv",
     buffer: Buffer.from(sheetCSV(rows)),
   });
+  const upload = panel.locator(".session-import");
+  await upload
+    .getByRole("button", { name: "Validate uploaded CSV", exact: true })
+    .click();
+  await expect(upload.getByRole("alert")).toHaveText(
+    "Enter a reason of at least five characters.",
+  );
+  await expect(upload.getByRole("alert")).toBeInViewport();
   await panel
     .getByLabel("Import reason", { exact: true })
     .fill("Reviewed synthetic class marks entry");
+  const changedReference = structuredClone(correct);
+  changedReference[1][1] = "Changed protected institute reference";
+  await file.setInputFiles({
+    name: "changed-reference.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(sheetCSV(changedReference)),
+  });
+  await upload
+    .getByRole("button", { name: "Validate uploaded CSV", exact: true })
+    .click();
+  await expect(upload.getByRole("alert")).toContainText(
+    "reference rows changed",
+  );
+  await expect(upload.getByRole("alert")).toBeInViewport();
+  await file.setInputFiles({
+    name: "invalid-marks.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(sheetCSV(rows)),
+  });
   await panel
     .getByRole("button", { name: "Validate uploaded CSV", exact: true })
     .click();
@@ -167,6 +199,7 @@ try {
     exact: true,
   });
   await expect(preview).toContainText("Marks must be between 0 and 33");
+  await expect(preview).toBeFocused();
   await expect(
     preview.getByRole("button", { name: "Apply validated marks", exact: true }),
   ).toBeDisabled();
@@ -190,6 +223,7 @@ try {
     .getByRole("button", { name: "Validate uploaded CSV", exact: true })
     .click();
   await expect(preview).toContainText("99 changed entries");
+  await expect(preview).toBeFocused();
   await preview
     .getByRole("button", { name: "Apply validated marks", exact: true })
     .click();

@@ -175,13 +175,18 @@ function readCSV(csv: string) {
         ? "\t"
         : ",";
   try {
-    return parse(text, {
+    const rows = parse(text, {
       bom: true,
       delimiter,
       skip_empty_lines: true,
       relax_column_count: true,
       max_record_size: 100000,
     }) as string[][];
+    // Numbers and Excel export a rectangular table, including empty final rows.
+    // Keep populated rows intact so identity and column validation stays strict.
+    while (rows.length && rows.at(-1)!.every((cell) => !cell.trim()))
+      rows.pop();
+    return rows;
   } catch {
     check(
       false,
@@ -262,7 +267,8 @@ export function sessionMarkImport(app: FastifyInstance) {
         check(
           m.metadata.every(
             (row, index) =>
-              rows[index + 1]?.length === row.length &&
+              (rows[index + 1]?.length ?? 0) >= row.length &&
+              rows[index + 1].slice(row.length).every((cell) => !cell.trim()) &&
               row.every(
                 (cell, column) =>
                   rows[index + 1][column] === spreadsheetText(cell),

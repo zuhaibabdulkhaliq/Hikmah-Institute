@@ -324,6 +324,60 @@ test("Session CSV validation rejects malformed headers, formulas, invalid scores
   protectedFile[7][4] = "10";
   assert((await preview(escaped, protectedFile)).canApply);
 });
+test("Session CSV accepts rectangular spreadsheet exports and empty final rows without accepting changed references or extra data", async () => {
+  const f = await fixture();
+  for (const delimiter of [",", ";", "\t"]) {
+    const rows = await template(f);
+    rows[7][4] = "25";
+    const width = rows[6].length;
+    const padded = rows.map((row) => [
+      ...row,
+      ...Array(width - row.length).fill(""),
+    ]);
+    padded.push(Array(width).fill(""), Array(width).fill(""));
+    const encode = (records: string[][]) =>
+      "\uFEFF" +
+      records
+        .map((r) =>
+          r.map((s) => '"' + s.replaceAll('"', '""') + '"').join(delimiter),
+        )
+        .join("\r\n");
+    const p = ok(
+      await call("POST", f.base + "/marks/import/preview", {
+        csv: encode(padded),
+        reason: "Review rectangular spreadsheet CSV",
+      }),
+    );
+    assert(p.canApply);
+    assert.equal(p.summary.changedCells, 1);
+    assert.equal(p.changes[0].after, "25 · timing unknown");
+    padded[1][2] = "Unexpected reference content";
+    ok(
+      await call("POST", f.base + "/marks/import/preview", {
+        csv: encode(padded),
+        reason: "Reject extra populated reference fields",
+      }),
+      422,
+    );
+    padded[1][2] = "";
+    padded[1][1] = "Altered institute identity";
+    ok(
+      await call("POST", f.base + "/marks/import/preview", {
+        csv: encode(padded),
+        reason: "Reject altered protected reference values",
+      }),
+      422,
+    );
+  }
+  const rows = await template(f);
+  rows[7][4] = "25";
+  rows.push(Array(rows[6].length).fill(""));
+  rows.at(-1)![4] = "Unexpected extra data";
+  const invalid = await preview(f, rows);
+  assert(!invalid.canApply);
+  assert(invalid.errors.some((e: any) => e.message.includes("Student number")));
+  assert.equal(await stored(f), undefined);
+});
 test("Session CSV scope binds templates to class/session and preview ownership; revoked staff, Ameer and subject-only access are denied", async () => {
   const f = await fixture(),
     other = await fixture();

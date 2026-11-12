@@ -1,5 +1,11 @@
 # Implementation and verification record
 
+## 12 November 2026 — spreadsheet export and validation feedback repair
+
+Reproduced a 422 rejection when a valid marks file was exported as a rectangular spreadsheet: harmless empty cells added to reference rows failed an exact-width check. The error was displayed above the long class sheet, away from the upload controls. Empty padding on reference rows and completely empty final rows are now accepted; protected contents, meaningful extra fields, headings, roster and marks checks remain strict. A separate import feedback region keeps errors/progress/success beside the form and focuses errors or the review preview. Missing/short reasons use explicit inline validation instead of a browser-only submission block.
+
+Verification: lint and API/shared/web/mobile types passed; **43 PostgreSQL/domain/PDF tests passed with no failures or skips**, including a new regression covering padded comma/semicolon/tab exports and rejection of changed references or extra populated rows. Production web/API builds passed. Production Chromium CSV smoke passed, including visible missing-reason/server errors, focused previews, a rectangular export with an empty final row, saving 99 entries, acknowledged corrections and 1440/1024/820/768/390/320px layouts. See [the upload guide](RESULT_SHEET_CSV.md).
+
 ## 12 November 2026 — session CSV marks entry and Urdu result sheets
 
 Added a complete class/session workflow under **Results & reports → Session results sheet**, with a shortcut from managed paper entry. Templates contain student numbers, rolls, names, attendance and separately coded paper/maxima columns; only paper marks are blank. Optional exam-leave/on-time columns preserve existing facts and require explicit confirmation for new on-time completion. Uploaded total, percentage, grade and position cells are never applied.

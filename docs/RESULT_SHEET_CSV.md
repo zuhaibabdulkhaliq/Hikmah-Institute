@@ -46,7 +46,7 @@ With the standard marks-only template, existing flags are preserved and new mark
 
 ## Validation and conflicts
 
-The server validates the generated template reference, class/session, roster, distinct paper headers and maxima, duplicate or missing students, protected identity cells, valid numeric/status values and exam flags. Formulas, negative/excess marks, excess precision and unknown columns are rejected. UTF-8 BOM and comma/semicolon/tab delimiters are supported when saved from the generated file. The limit is 500 students and 500 KB per file.
+The server validates the generated template reference, class/session, roster, distinct paper headers and maxima, duplicate or missing students, protected identity cells, valid numeric/status values and exam flags. Formulas, negative/excess marks, excess precision and unknown columns are rejected. UTF-8 BOM and comma/semicolon/tab delimiters are supported when saved from the generated file. Rectangular spreadsheet exports may pad the short reference rows with empty cells and add completely empty final rows; these are accepted. Populated extra reference fields or student rows are still rejected. The limit is 500 students and 500 KB per file.
 
 Blank cells permit partial updates while keeping the complete roster. Do not delete unchanged student rows. Computed total/percentage/grade/position columns are ignored and recalculated; uploaded values cannot set a grade or position.
 
@@ -63,6 +63,12 @@ The academic year must be active, the scheme approved, and affected papers open 
 The class PDF uses black paper/maxima headers, white scored cells, blue grade/percentage text, individual paper codes, and roll-number ordering. Large paper lists split into readable panels with repeated identities instead of shrinking eighty columns onto one page. The class result CSV includes every paper, rather than just the old total/grade summary.
 
 Original archived PDFs remain byte-for-byte unchanged. A session sheet formatted from a historical publication uses its frozen data and identifies its publication revision; it does not replace the archived original. Corrected official results still require validation, paper review and publication of a new immutable revision.
+
+## If Validate appears to do nothing
+
+Validation feedback appears beside the upload controls, and the page focuses the errors or preview. Enter an import reason of at least five characters; a missing or short reason now shows an inline error. Validation only prepares a preview: select **Apply validated marks** after reviewing it to save changes.
+
+If an older version hides the error near the top of the session sheet, update the source and rebuild using `bash scripts/demo.sh start`, then reload the page. Preserve your current `.env.demo`, fonts and database volume. You can reselect the same UTF-8 spreadsheet export; there is no need to remove harmless empty padding manually.
 
 ## Synthetic examples
 
