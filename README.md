@@ -33,6 +33,10 @@ This uses a separate synthetic demo database, retains data when stopped, and kee
 
 If the saved demo administrator password no longer matches `.env.demo`, run `bash scripts/reset-demo-password.sh` with the database running. This restores only `admin@hikmah.example` to the current `HIKMAH_DEMO_PASSWORD`, revokes its sessions and records an audit event without deleting academic data or rebuilding the image. See the [Mac sign-in and recovery instructions](docs/MACOS-APPLE-SILICON.md#4-sign-in).
 
+## Start the real institute after testing
+
+Follow [data safety and a fresh institute setup](docs/DATA_SAFETY_AND_FRESH_START.md) to make an authenticated encrypted backup, verify recovery, and start a separate empty institute at **http://localhost:3002**. Its students, subjects, classes and staff begin empty; you choose a private first administrator. Your demo remains intact. The guide also covers off-site copies, retention, recovery and optional later removal of synthetic demo data.
+
 ## Local setup
 
 Prerequisites: Node 24, pnpm **10.28.2**, Docker Compose, Python 3.12+, Pango libraries and Noto Arabic/Urdu fonts. On Debian/Ubuntu install `python3-venv libpango-1.0-0 libpangoft2-1.0-0 fonts-noto-core fonts-noto-extra`. Use the existing checkout; there is no need for another Git worktree.
@@ -74,8 +78,10 @@ pnpm test
 pnpm build
 EXPO_OFFLINE=1 pnpm --filter @hikmah/mobile exec expo install --check
 EXPO_OFFLINE=1 pnpm --filter @hikmah/mobile exec expo export --platform ios --platform android
-# With API and web running:
+# On a disposable synthetic installation only (browser checks write test data):
+# Set SMOKE_BASE_URL and DEMO_PASSWORD for that installation.
 CHROMIUM_PATH=/usr/bin/chromium pnpm exec tsx scripts/browser-smoke.ts
+SMOKE_DISPOSABLE=1 CHROMIUM_PATH=/usr/bin/chromium pnpm exec tsx scripts/usability-browser-smoke.ts
 ```
 
 `pnpm test` creates a randomly named disposable PostgreSQL database, applies every migration, seeds synthetic data, runs the tests and drops only that database. The local database role therefore needs CREATEDB for this command. The tests use explicitly named **TEST ONLY** policy rules; these do not approve the development database's policies. Database/PDF integration is required; the test command does not silently skip unavailable services.

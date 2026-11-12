@@ -100,6 +100,14 @@ try {
     (p: any) => p.section_id === seedSection.id && p.paper_code === "P01",
   );
   if (!seedPaper) throw new Error("Missing synthetic Section A paper fixture");
+  const approval = await page.request.post(
+    new URL(
+      `/v1/exam-cycles/${seedPaper.exam_cycle_id}/sections/${seedSection.id}/scheme/approve`,
+      page.url(),
+    ).toString(),
+    { data: {}, headers: { origin: new URL(page.url()).origin } },
+  );
+  expect(approval.status()).toBe(200);
   await expect(
     page
       .getByLabel("Paper", { exact: true })

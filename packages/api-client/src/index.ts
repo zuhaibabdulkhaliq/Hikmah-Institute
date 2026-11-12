@@ -2,6 +2,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public retryAfter?: number,
   ) {
     super(message);
   }
@@ -16,25 +17,56 @@ export function createClient(
     options: RequestInit = {},
   ): Promise<T> {
     const bearer = await token?.();
-    const response = await fetch(base + path, {
-      ...options,
-      credentials: token ? "omit" : "include",
-      cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-        ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
-        ...options.headers,
-      },
-    });
-    const result = await response.json();
+    let response: Response;
+    try {
+      response = await fetch(base + path, {
+        ...options,
+        credentials: token ? "omit" : "include",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+          ...options.headers,
+        },
+      });
+    } catch (e) {
+      if (options.signal?.aborted || (e as Error).name === "AbortError")
+        throw e;
+      throw new ApiError(
+        0,
+        "Cannot reach the institute server. Check your connection and try again.",
+      );
+    }
+    let result: any = null;
+    const text = await response.text();
+    try {
+      result = text ? JSON.parse(text) : null;
+    } catch {
+      if (response.ok)
+        throw new ApiError(
+          502,
+          "The server returned an unexpected response. Try again or contact an administrator.",
+        );
+    }
     if (!response.ok) {
       if (
         response.status === 401 ||
         (response.status === 403 &&
-          result.message === "Account disabled or not invited")
+          result?.message === "Account disabled or not invited")
       )
         onSessionInvalid?.();
-      throw new ApiError(response.status, result.message ?? "Request failed");
+      const header = response.headers.get("Retry-After");
+      const retryAfter =
+        header && /^\d+$/.test(header)
+          ? Math.min(3600, Number(header))
+          : undefined;
+      const message =
+        typeof result?.message === "string"
+          ? result.message
+          : response.status === 429
+            ? "Too many requests. Please wait a moment and try again."
+            : "The server is temporarily unavailable. Please try again shortly.";
+      throw new ApiError(response.status, message, retryAfter);
     }
     return result as T;
   };

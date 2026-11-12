@@ -1,0 +1,82 @@
+# Clean local institute installation. Uses its own project, credentials and volume.
+name: hikmah-institute-local
+services:
+  db:
+    image: postgres:17.7-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hikmah
+      POSTGRES_PASSWORD: ${HIKMAH_INSTITUTE_DB_PASSWORD:?Run scripts/init-institute.sh}
+      POSTGRES_DB: ${HIKMAH_INSTITUTE_DATABASE:-hikmah}
+    volumes: [institute-postgres:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U hikmah -d "$$POSTGRES_DB"']
+      interval: 3s
+      timeout: 3s
+      retries: 60
+  api:
+    image: hikmah-demo:local
+    pull_policy: never
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      AUTH_COOKIE_PREFIX: hikmah-institute
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      DATABASE_URL: postgres://hikmah:${HIKMAH_INSTITUTE_DB_PASSWORD}@db:5432/${HIKMAH_INSTITUTE_DATABASE:-hikmah}
+      BETTER_AUTH_SECRET: ${HIKMAH_INSTITUTE_AUTH_SECRET:?Run scripts/init-institute.sh}
+      BETTER_AUTH_URL: http://localhost:${HIKMAH_INSTITUTE_PORT:-3002}
+      WEB_ORIGIN: http://localhost:${HIKMAH_INSTITUTE_PORT:-3002}
+      PDF_PYTHON: /opt/pdf/bin/python
+    command:
+      [
+        "sh",
+        "-c",
+        "node --import tsx scripts/migrate.ts && node dist/api/main.js",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 90
+  web:
+    image: hikmah-demo:local
+    pull_policy: never
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+    command:
+      [
+        "node_modules/.bin/pnpm",
+        "--filter",
+        "@hikmah/web",
+        "start",
+        "--hostname",
+        "0.0.0.0",
+      ]
+    ports: ["127.0.0.1:${HIKMAH_INSTITUTE_PORT:-3002}:3000"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 60
+volumes:
+  institute-postgres:

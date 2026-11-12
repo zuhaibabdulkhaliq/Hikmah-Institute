@@ -3,7 +3,9 @@
 import { InstituteDetails } from "../components/institute-details";
 import { AccountSettings } from "../components/account-settings";
 import { LanguageSwitch, useI18n } from "../components/language";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { WorkspaceFeedback } from "../components/workspace-feedback";
+import { OverviewSections } from "../components/overview-sections";
 import {
   AttendanceTotals,
   CurriculumPanel,
@@ -18,6 +20,7 @@ import { AcademicCalendarPage } from "../components/academic-calendar";
 import { SessionResultSheet } from "../components/session-result-sheet";
 import {
   createClient,
+  ApiError,
   type Identity,
   type Section,
   type Sheet,
@@ -75,35 +78,69 @@ export default function Home() {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
+  const loadVersion = useRef(0),
+    accessVersion = useRef(""),
+    pending = useRef(0),
+    connectionError = useRef(false);
   async function load() {
+    const version = ++loadVersion.current;
     try {
       const identity = await api<Identity>("/v1/me");
+      if (version !== loadVersion.current) return;
+      if (
+        accessVersion.current &&
+        accessVersion.current !== identity.accessVersion
+      ) {
+        setSections([]);
+        setSection("");
+        setCycles([]);
+        setCycle("");
+      }
+      accessVersion.current = identity.accessVersion;
       setMe(identity);
-      const s = await api<Section[]>("/v1/sections");
-      setSections(s);
-      setSection((v) => (s.some((item) => item.id === v) ? v : s[0]?.id || ""));
-      const c =
+      const [s, c] = await Promise.all([
+        api<Section[]>("/v1/sections"),
         identity.roles.includes("ADMIN") ||
         identity.managedSections.length ||
         identity.teachingSections.length
-          ? await api<any[]>("/v1/exam-cycles")
-          : [];
+          ? api<any[]>("/v1/exam-cycles")
+          : Promise.resolve([]),
+      ]);
+      if (version !== loadVersion.current) return;
+      setSections(s);
+      setSection((v) => (s.some((item) => item.id === v) ? v : s[0]?.id || ""));
       setCycles(c);
       setCycle(
         (v) =>
           (c.some((item) => item.id === v) ? v : "") ||
-          c.find((c) => c.code === "SHASH_MAHI")?.id ||
+          c.find((item) => item.code === "SHASH_MAHI")?.id ||
           c[0]?.id ||
           "",
       );
-    } catch {
-      setMe(null);
+      if (connectionError.current) {
+        setError("");
+        connectionError.current = false;
+      }
+    } catch (e) {
+      if (version !== loadVersion.current) return;
+      if (
+        e instanceof ApiError &&
+        (e.status === 401 ||
+          (e.status === 403 && e.message === "Account disabled or not invited"))
+      ) {
+        setMe(null);
+      } else {
+        connectionError.current = true;
+        setError((e as Error).message);
+      }
     } finally {
-      setCheckingSession(false);
+      if (version === loadVersion.current) setCheckingSession(false);
     }
   }
   useEffect(() => {
     const clear = () => {
+      loadVersion.current++;
+      setCheckingSession(false);
       setMe(null);
       setSections([]);
       setSection("");
@@ -121,6 +158,7 @@ export default function Home() {
     };
   }, []);
   async function run(fn: () => Promise<void>) {
+    pending.current++;
     setBusy(true);
     setError("");
     setMessage("");
@@ -129,7 +167,8 @@ export default function Home() {
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setBusy(false);
+      pending.current--;
+      setBusy(pending.current > 0);
     }
   }
   const admin = me?.roles.includes("ADMIN");
@@ -229,6 +268,18 @@ export default function Home() {
               {t(error)}
             </p>
           )}
+          {connectionError.current && (
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                setError("");
+                void load();
+              }}
+            >
+              {t("Retry connection")}
+            </button>
+          )}
           <button className="login-submit" disabled={busy}>
             {t(busy ? "Signing in…" : "Sign in")}
             <Icon name="arrow" />
@@ -290,6 +341,7 @@ export default function Home() {
             <LanguageSwitch />
             <AccountSettings
               onChanged={() => {
+                loadVersion.current++;
                 setMe(null);
                 setPasswordChanged(true);
                 setError("");
@@ -324,6 +376,7 @@ export default function Home() {
                     method: "POST",
                     body: "{}",
                   });
+                  loadVersion.current++;
                   setMe(null);
                   setSections([]);
                   setSection("");
@@ -376,16 +429,14 @@ export default function Home() {
               )}
             </span>
           </div>
-          {error && (
-            <div role="alert" className="notice error message">
-              {t(error)}
-            </div>
-          )}
-          {message && (
-            <div role="status" className="notice success message">
-              {t(message)}
-            </div>
-          )}
+          <WorkspaceFeedback
+            error={error}
+            message={message}
+            onDismiss={() => {
+              setError("");
+              setMessage("");
+            }}
+          />
           {busy && (
             <div role="status" className="tiny">
               {t("Working…")}
@@ -425,69 +476,19 @@ export default function Home() {
           {view === "Overview" && (
             <>
               <div className="split">
-                <div className="panel">
-                  <div className="panelhead">
-                    <h2>{t("Your sections")}</h2>
-                    <span className="tag">
-                      {t(sections.length)} {t(" sections")}
-                    </span>
-                  </div>
-                  <div
-                    className="tablewrap"
-                    tabIndex={0}
-                    aria-label={t("Your sections")}
-                  >
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>{t("Section")}</th>
-                          <th>{t("Academic year / program")}</th>
-                          <th>{t("Next action")}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sections.map((s) => (
-                          <tr key={s.id}>
-                            <td>
-                              <strong>{s.name}</strong>
-                            </td>
-                            <td>
-                              {s.year_label} {t(" · ")}
-                              {s.program_name}
-                            </td>
-                            <td>
-                              <button
-                                className="secondary"
-                                onClick={() => {
-                                  setSection(s.id);
-                                  setView(
-                                    admin ||
-                                      me.attendanceSections.includes(s.id)
-                                      ? "Attendance"
-                                      : "Marks entry",
-                                  );
-                                }}
-                              >
-                                {t(
-                                  admin || me.attendanceSections.includes(s.id)
-                                    ? "Open attendance →"
-                                    : "Open assigned papers →",
-                                )}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {!sections.length && (
-                    <p className="empty">
-                      {t(
-                        "No assigned sections. An administrator can assign your access.",
-                      )}
-                    </p>
-                  )}
-                </div>
+                <OverviewSections
+                  sections={sections}
+                  admin={!!admin}
+                  onSetup={() => setView("Academic setup")}
+                  onOpen={(id) => {
+                    setSection(id);
+                    setView(
+                      admin || me.attendanceSections.includes(id)
+                        ? "Attendance"
+                        : "Marks entry",
+                    );
+                  }}
+                />
                 <div className="panel">
                   <div className="eyebrow">{t("YOUR NEXT STEP")}</div>
                   <h2>{t("Quick actions")}</h2>
@@ -1392,6 +1393,7 @@ function Exams({
 }
 function Marks({
   run,
+  busy,
   admin,
   setMessage,
   managedSections,
@@ -1409,6 +1411,7 @@ function Marks({
   const [papers, setPapers] = useState<any[]>([]),
     [paper, setPaper] = useState(""),
     [data, setData] = useState<any>(null);
+  const loadVersion = useRef(0);
   useEffect(() => {
     void run(async () => {
       const p = await api<any[]>("/v1/assessments");
@@ -1417,26 +1420,54 @@ function Marks({
     });
   }, []);
   async function load() {
-    if (paper) setData(await api("/v1/assessments/" + paper + "/marks"));
+    const version = ++loadVersion.current;
+    if (!paper) return;
+    try {
+      const result = await api("/v1/assessments/" + paper + "/marks");
+      if (version === loadVersion.current) setData(result);
+    } catch (e) {
+      if (version === loadVersion.current) throw e;
+    }
   }
   useEffect(() => {
+    setData(null);
+    setImported(null);
+    setCsv("");
+    setMarkReason("");
     void run(load);
+    return () => {
+      loadVersion.current++;
+    };
   }, [paper]);
   const canManage = admin || managedSections.includes(data?.paper.section_id);
+  const editable =
+    !!data &&
+    data.paper.year_state === "ACTIVE" &&
+    data.paper.state === "OPEN" &&
+    !data.paper.submitted_at;
   return (
     <div className="panel">
       <div className="toolbar">
         <select
+          disabled={busy}
           aria-label={t("Paper")}
           value={paper}
           onChange={(e) => setPaper(e.target.value)}
         >
           {papers.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.section_name ?? ""} {t(" · ")}
-              {p.cycle_title ?? ""} {t(" · ")}
-              {p.paper_code} {t(" ·")} {p.title} {t(" / ")}
-              {p.max_marks}
+              {[
+                p.year_label,
+                p.program_name,
+                p.level_name,
+                p.section_name,
+                p.cycle_title,
+                p.paper_code,
+                p.title,
+              ]
+                .filter(Boolean)
+                .join(" · ")}{" "}
+              / {p.max_marks}
             </option>
           ))}
         </select>
@@ -1447,6 +1478,17 @@ function Marks({
       </div>
       {data && (
         <>
+          {!editable && (
+            <p className="notice">
+              {t(
+                data.paper.year_state !== "ACTIVE"
+                  ? "This academic year is read-only. An administrator must reopen it before corrections."
+                  : data.paper.state !== "OPEN"
+                    ? "Approve the paper scheme before entering marks."
+                    : "This paper is submitted. A Mushrif or administrator can reopen it with a correction reason.",
+              )}
+            </p>
+          )}
           {canManage && (
             <button
               className="secondary"
@@ -1482,6 +1524,7 @@ function Marks({
               }}
             />
             <button
+              disabled={busy || !editable}
               onClick={() =>
                 void run(async () =>
                   setImported(
@@ -1499,7 +1542,7 @@ function Marks({
               <>
                 <pre>{JSON.stringify(imported, null, 2)}</pre>
                 <button
-                  disabled={!imported.canApply}
+                  disabled={busy || !editable || !imported.canApply}
                   onClick={() =>
                     void run(async () => {
                       await api(`/v1/assessments/${paper}/marks/bulk`, {
@@ -1545,6 +1588,7 @@ function Marks({
                     </td>
                     <td>
                       <select
+                        disabled={busy || !editable}
                         aria-label={`Mark state ${e.student_number}`}
                         value={e.state ?? "PENDING"}
                         onChange={(event) => {
@@ -1583,7 +1627,7 @@ function Marks({
                         min="0"
                         max={data.paper.max_marks}
                         value={e.awarded ?? ""}
-                        disabled={e.state !== "GRADED"}
+                        disabled={busy || !editable || e.state !== "GRADED"}
                         onChange={(event) => {
                           const entries = [...data.entries];
                           entries[i] = {
@@ -1600,6 +1644,7 @@ function Marks({
                     <td>
                       <label className="check-label">
                         <input
+                          disabled={busy || !editable}
                           aria-label={`Exam leave ${e.student_number}`}
                           type="checkbox"
                           checked={!!e.onLeave}
@@ -1622,7 +1667,7 @@ function Marks({
                           aria-label={`Given on time ${e.student_number}`}
                           type="checkbox"
                           checked={e.onTime === true}
-                          disabled={e.onLeave}
+                          disabled={busy || !editable || e.onLeave}
                           onChange={(event) => {
                             const entries = [...data.entries];
                             entries[i] = { ...e, onTime: event.target.checked };
@@ -1640,6 +1685,7 @@ function Marks({
           </div>
           <div className="toolbar" style={{ marginTop: 20 }}>
             <button
+              disabled={busy || !editable}
               onClick={() =>
                 void run(async () => {
                   await api(`/v1/assessments/${paper}/marks/bulk`, {
@@ -1670,6 +1716,7 @@ function Marks({
             </button>
             <button
               className="secondary"
+              disabled={busy || !editable}
               onClick={() =>
                 void run(async () => {
                   await api(`/v1/assessments/${paper}/submit`, {
@@ -1685,6 +1732,12 @@ function Marks({
             </button>
             {canManage && (
               <button
+                disabled={
+                  busy ||
+                  data.paper.year_state !== "ACTIVE" ||
+                  !data.paper.submitted_at ||
+                  !!data.paper.approved_by
+                }
                 onClick={() =>
                   void run(async () => {
                     await api(`/v1/assessments/${paper}/approve`, {
@@ -1721,7 +1774,17 @@ function Marks({
                 required
                 minLength={5}
               />
-              <button className="secondary">{t("Reopen paper")}</button>
+              <button
+                className="secondary"
+                disabled={
+                  busy ||
+                  data.paper.year_state !== "ACTIVE" ||
+                  data.paper.state !== "OPEN" ||
+                  !data.paper.submitted_at
+                }
+              >
+                {t("Reopen paper")}
+              </button>
             </form>
           )}
         </>

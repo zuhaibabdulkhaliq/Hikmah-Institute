@@ -209,14 +209,14 @@ try {
     .click();
   await from.fill(date(0));
   await through.fill(year.end_date.slice(0, 10));
-  await page.getByLabel("Copy a saved schedule", { exact: true }).selectOption({
-    label: (
-      await page
-        .getByLabel("Copy a saved schedule", { exact: true })
-        .locator("option")
-        .allTextContents()
-    ).find((label: string) => label.includes("M4:"))!,
-  });
+  const copiedSchedule = page
+    .getByLabel("Copy a saved schedule", { exact: true })
+    .locator(`option[value^="${targets[2].id}:"]`)
+    .first();
+  await expect(copiedSchedule).toHaveCount(1);
+  await page
+    .getByLabel("Copy a saved schedule", { exact: true })
+    .selectOption((await copiedSchedule.getAttribute("value"))!);
   await expect(
     page
       .getByRole("group", { name: "Teaching weekdays" })

@@ -2,6 +2,8 @@
 
 This guide is for the institute operator. The companion [hosting guide](HOSTING.md) covers a real HTTPS installation and backups. [Phone testing](MOBILE_TESTING.md) covers both platforms from a Mac with Docker.
 
+For your transition from testing to real student entry, follow [data safety and a fresh institute setup](DATA_SAFETY_AND_FRESH_START.md). It includes explicit demo/institute backup targets, restore verification, a separate empty local installation, and recovery without overwriting the running database.
+
 ## Everyday use
 
 Use **English / اردو** on the sign-in screen or in the web header, and at the top of the mobile app. The choice is remembered on that browser/phone and can be changed without signing out. Urdu uses a right-to-left layout; dates, emails, passwords and numeric inputs retain usable formatting. Language changes do not modify names, paper codes, saved records, CSV templates or approved academic policy. Official result PDFs keep the institute's Urdu layout.

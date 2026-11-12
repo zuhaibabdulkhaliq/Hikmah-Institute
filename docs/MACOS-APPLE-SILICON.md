@@ -61,7 +61,7 @@ From the project folder:
 bash scripts/demo.sh start
 ```
 
-The first run downloads dependencies, builds the application, creates private random demo credentials, starts the database, applies migrations, seeds synthetic data and waits for the API/web health checks. Keep Docker running and allow several minutes for the first build. Subsequent builds reuse the Docker cache. Avoid `sudo`.
+The first run downloads dependencies, builds the application, creates private database/authentication secrets and a stable demo password, starts the database, applies migrations, seeds synthetic data and waits for the API/web health checks. Keep Docker running and allow several minutes for the first build. Subsequent builds reuse the Docker cache. Avoid `sudo`.
 
 When successful, Terminal prints:
 
@@ -90,7 +90,7 @@ Find `HIKMAH_DEMO_PASSWORD=` and copy only the value after `=`. Sign in with:
 | `mushrif@hikmah.example` | All subjects and attendance in Section A     |
 | `ameer@hikmah.example`   | Section A attendance                         |
 
-All synthetic accounts use the generated `HIKMAH_DEMO_PASSWORD`. Keep the configuration file private and preserve its credential values after the first setup; the database volume keeps the original credentials and accounts. Finder hides dotfiles; `open -e .env.demo` opens it directly.
+Fresh demos use `HikmahDemo2026!`; retained demos preserve their existing `HIKMAH_DEMO_PASSWORD` and any passwords changed through the app. Keep the configuration file private and preserve its credential values after the first setup; the database volume keeps the original credentials and accounts. Finder hides dotfiles; `open -e .env.demo` opens it directly.
 
 If the administrator password is rejected, first confirm the email is `admin@hikmah.example` and that you copied only `HIKMAH_DEMO_PASSWORD`, not the database password or authentication secret. Restarting the demo does not change existing account passwords. If the configuration value no longer matches the saved demo account, keep the services running and run:
 
@@ -112,7 +112,7 @@ Run the full automated checks from Terminal in the same folder:
 bash scripts/demo.sh test
 ```
 
-The command rebuilds the current source, runs lint/type checks, runs the database/PDF integration tests, and builds the web/API applications. It returns to the prompt with exit code zero on success. You should see 52 tests pass and no test failures. The test runner creates and drops its own temporary database, preserving the demo database. This command does not run native-device or browser automation; use the manual browser steps above on your Mac.
+The command rebuilds the current source, runs lint/type checks, runs the database/PDF integration tests, and builds the web/API applications. It returns to the prompt with exit code zero on success. You should see 58 tests pass and no test failures. The test runner creates and drops its own temporary database, preserving the demo database. This command does not run native-device or browser automation; use the manual browser steps above on your Mac.
 
 ## 6. Status, stopping and starting again
 
@@ -129,6 +129,10 @@ bash scripts/demo.sh start
 ```
 
 Keep `.env.demo` and the Docker database volume. Do not remove the volume or use `down -v` unless you intentionally want to erase this demo's data. Downloading the source again does not reset the existing Docker volume; reusing it requires the original private configuration.
+
+## Start the institute after demo testing
+
+Use [the data safety and fresh-start guide](DATA_SAFETY_AND_FRESH_START.md). It shows how to back up and verify the demo, then run `bash scripts/institute.sh start` and `bash scripts/institute.sh create-admin`. The separate institute opens at **http://localhost:3002**, without demo students, subjects, sections, years or sample staff. Your demo stays intact. Never erase a volume to fix login.
 
 ## Troubleshooting
 

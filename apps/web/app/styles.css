@@ -1829,3 +1829,69 @@ html[lang="ur"] .tiny {
 html[lang="ur"] nav button {
   min-height: 48px;
 }
+
+.workspace-feedback {
+  position: fixed;
+  bottom: 22px;
+  inset-inline-end: 22px;
+  z-index: 100;
+  width: min(560px, calc(100vw - 44px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  box-shadow: 0 12px 36px rgba(23, 50, 77, 0.18);
+  background: #f8fcff;
+}
+.workspace-feedback.success {
+  background: #eaf8f3;
+}
+.workspace-feedback.error {
+  background: #fff1ee;
+}
+.workspace-feedback button {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+}
+.overview-sections input[type="search"] {
+  width: 100%;
+}
+.overview-sections > .check-label {
+  margin: 14px 0;
+}
+.overview-class-list {
+  display: grid;
+}
+.overview-class {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--line);
+}
+.overview-class > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.overview-class strong,
+.overview-class .tiny {
+  display: block;
+}
+.overview-class button {
+  flex-shrink: 0;
+}
+@media (max-width: 420px) {
+  .workspace-feedback {
+    bottom: 12px;
+    inset-inline-end: 12px;
+    width: calc(100vw - 24px);
+  }
+  .overview-class {
+    align-items: start;
+    flex-wrap: wrap;
+  }
+}

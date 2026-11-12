@@ -34,15 +34,17 @@ The same image can run web and API. It currently contains build tooling; slim im
 
 ## Backup and restore
 
-For the local Compose database, place an encryption passphrase in a protected file outside Git and preserve it separately from backup ciphertext:
+Follow [data safety, fresh setup and recovery](DATA_SAFETY_AND_FRESH_START.md). Select the correct installation explicitly:
 
 ```sh
-BACKUP_PASSPHRASE_FILE=/secure/path/backup-key bash scripts/backup.sh
-BACKUP_PASSPHRASE_FILE=/secure/path/backup-key bash scripts/restore-drill.sh \
-  .data/backups/hikmah-TIMESTAMP.dump.enc
+bash scripts/data-backup.sh init-key
+bash scripts/data-backup.sh backup institute
+bash scripts/data-backup.sh verify institute "/full/path/to/archive.hikmah.enc"
 ```
 
-The drill decrypts into a randomly named disposable database, restores with errors fatal, verifies migrations/student rows, then drops only the disposable database. The backup uses pg_dump custom format and AES-256-CBC with PBKDF2. Use managed authenticated/encrypted object storage and access-controlled key storage for production backup transport/retention. These scripts target `compose.yaml`; adapt service/connection selectors for managed production PostgreSQL and test the adapted restore before rollout. Do not treat a local backup as an operational offsite retention plan.
+Use `demo` for the synthetic demo, `local` for the original developer database, or `production` for the self-managed production Compose database. Archives use authenticated AES-256-GCM encryption and custom-format `pg_dump`. The key is preserved outside Git and must have a separate secure copy. Verification checks migration checksums and publication hashes in a new disposable database. `recover institute|production FILE` prepares a new verified database and revokes restored sessions; it never overwrites or automatically switches the running database. Managed provider recovery uses a separate branch/database through that provider instead.
+
+Configure scheduled, off-site backups and monitoring separately; creating a local archive does not configure these. Test recovery regularly and agree retention/recovery targets with the institute. Legacy `backup.sh` / `restore-drill.sh` remain only for older development AES-CBC archives; do not use them for new `.hikmah.enc` archives.
 
 Published PDFs are stored as immutable database bytea assets with SHA-256 hashes, so they are included in database backups and are authorized on each download. At larger scale, migrate these assets to a private immutable object store; do not expose public student file URLs.
 

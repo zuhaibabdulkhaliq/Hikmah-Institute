@@ -1051,4 +1051,32 @@ export const ur: Record<string, string> = {
   "Policy required": "ضوابط کی منظوری ضروری ہے",
   "Every paper must be graded on time without exam leave":
     "تمام پرچے مقررہ وقت پر، بغیر امتحانی رخصت کے مکمل ہوں",
+  "Dismiss message": "پیغام بند کریں",
+  "Retry connection": "دوبارہ رابطہ کریں",
+  "Cannot reach the institute server. Check your connection and try again.":
+    "ادارے کے سرور سے رابطہ نہیں ہو سکا۔ نیٹ ورک دیکھ کر دوبارہ کوشش کریں۔",
+  "The server returned an unexpected response. Try again or contact an administrator.":
+    "سرور سے درست جواب نہیں ملا۔ دوبارہ کوشش کریں یا منتظم سے رابطہ کریں۔",
+  "Too many requests. Please wait a moment and try again.":
+    "درخواستیں زیادہ ہیں۔ کچھ دیر انتظار کر کے دوبارہ کوشش کریں۔",
+  "The server is temporarily unavailable. Please try again shortly.":
+    "سرور عارضی طور پر دستیاب نہیں۔ کچھ دیر بعد دوبارہ کوشش کریں۔",
+  "Find a class": "جماعت تلاش کریں",
+  "Search class, program or academic year":
+    "جماعت، پروگرام یا تعلیمی سال تلاش کریں",
+  "Include previous years": "گزشتہ سال بھی شامل کریں",
+  "Open class": "جماعت کھولیں",
+  "Start by creating an academic year and class section.":
+    "پہلے تعلیمی سال اور جماعت کا شعبہ بنائیں۔",
+  "No matching classes. Try another search or include previous years.":
+    "کوئی جماعت نہیں ملی۔ دوسری تلاش کریں یا گزشتہ سال شامل کریں۔",
+  "Open academic setup": "تعلیمی ترتیب کھولیں",
+  "Show fewer classes": "کم جماعتیں دکھائیں",
+  "Show all classes": "تمام جماعتیں دکھائیں",
+  "This academic year is read-only. An administrator must reopen it before corrections.":
+    "یہ تعلیمی سال قابل ترمیم نہیں۔ اصلاح سے پہلے منتظم اسے دوبارہ کھولے۔",
+  "Approve the paper scheme before entering marks.":
+    "نمبر درج کرنے سے پہلے پرچوں کا خاکہ منظور کریں۔",
+  "This paper is submitted. A Mushrif or administrator can reopen it with a correction reason.":
+    "یہ پرچہ جمع ہو چکا ہے۔ مشرف یا منتظم اصلاح کی وجہ کے ساتھ اسے دوبارہ کھول سکتا ہے۔",
 };

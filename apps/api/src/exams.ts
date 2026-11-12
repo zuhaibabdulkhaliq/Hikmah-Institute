@@ -263,22 +263,18 @@ export function exams(app: FastifyInstance) {
       "Exam access denied",
       403,
     );
-    const all = (
+    return (
       await pool.query(
-        "SELECT a.*,s.section_id,c.name AS section_name,ec.title AS cycle_title FROM exam_assessments a JOIN section_subjects s ON s.id=a.section_subject_id JOIN sections c ON c.id=s.section_id JOIN exam_cycles ec ON ec.id=a.exam_cycle_id WHERE c.organization_id=$1 AND a.exam_scheme_revision=current_scheme_revision(a.exam_cycle_id,s.section_id) ORDER BY a.display_order",
-        [a.org],
+        `SELECT a.*,s.section_id,c.name AS section_name,ec.title AS cycle_title,y.label AS year_label,y.state AS year_state,p.name AS program_name,COALESCE(l.name_ur,l.name_en) AS level_name
+      FROM exam_assessments a JOIN section_subjects s ON s.id=a.section_subject_id JOIN sections c ON c.id=s.section_id
+      JOIN exam_cycles ec ON ec.id=a.exam_cycle_id JOIN academic_years y ON y.id=c.academic_year_id JOIN programs p ON p.id=c.program_id JOIN levels l ON l.id=c.level_id
+      WHERE c.organization_id=$1 AND a.exam_scheme_revision=current_scheme_revision(a.exam_cycle_id,s.section_id) AND
+      ($2::boolean OR EXISTS(SELECT 1 FROM subject_teacher_assignments t WHERE t.section_subject_id=s.id AND t.teacher_user_id=$3 AND t.starts_on<=$4::date AND (t.ends_on IS NULL OR t.ends_on>=$4::date))
+      OR EXISTS(SELECT 1 FROM section_staff_assignments t WHERE t.section_id=c.id AND t.user_id=$3 AND t.active AND t.role IN ('MUSHRIF','CLASS_TEACHER') AND t.starts_on<=$4::date AND (t.ends_on IS NULL OR t.ends_on>=$4::date)))
+      ORDER BY (y.state='ACTIVE') DESC,y.start_date DESC,c.name,ec.sort_order,a.display_order`,
+        [a.org, a.admin, a.id, a.today],
       )
     ).rows;
-    const visible = [];
-    for (const p of all) {
-      try {
-        await paperScope(pool, a, p.id);
-        visible.push(p);
-      } catch {
-        /* omit */
-      }
-    }
-    return visible;
   });
   app.get("/v1/assessments/:id/marks", async (req) => {
     const a = await actor(req);

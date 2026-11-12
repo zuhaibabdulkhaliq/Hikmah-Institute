@@ -542,7 +542,17 @@ export default function Home() {
               {papers.map((p) => (
                 <View key={p.id}>
                   {button(
-                    `${p.paper_code} · ${p.title}`,
+                    [
+                      p.year_label,
+                      p.program_name,
+                      p.level_name,
+                      p.section_name,
+                      p.cycle_title,
+                      p.paper_code,
+                      p.title,
+                    ]
+                      .filter(Boolean)
+                      .join(" · "),
                     () =>
                       void run(async () => {
                         setPaper(p.id);

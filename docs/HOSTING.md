@@ -94,6 +94,8 @@ Restore a managed backup/PITR recovery into a **separate staging database**, nev
 
 Database backup settings are provider-specific; enabling an example compose file does not enable a provider's backups. Agree retention and a recovery target with the institute. Configure uptime alerts, disk/memory/database monitoring and notification ownership. No live provider configuration, restore acceptance, device signing or app-store submission is performed automatically by the source repository.
 
+For local demo/institute and self-managed Compose databases, [the backup and fresh-start guide](DATA_SAFETY_AND_FRESH_START.md) provides authenticated encrypted exports and verification into a separate database. These helpers do not configure a managed provider's backup schedule. With managed PostgreSQL, enable and test provider backups/PITR and independent exports, keep keys separately, and restore to a new branch/database before switching. Suggested initial retention is 30 daily and 12 monthly copies, subject to institute approval; back up more frequently during exam entry.
+
 ## 7. Updates and rollback
 
 1. Back up and record the currently running Git commit/image. Keep `.env.production`, the managed database and Caddy volumes.

@@ -18,5 +18,10 @@ export const auth = betterAuth({
   },
   plugins: [bearer()],
   session: { expiresIn: 60 * 60 * 8, updateAge: 60 * 30 },
-  advanced: { useSecureCookies: process.env.NODE_ENV === "production" },
+  advanced: {
+    useSecureCookies: process.env.NODE_ENV === "production",
+    ...(process.env.AUTH_COOKIE_PREFIX
+      ? { cookiePrefix: process.env.AUTH_COOKIE_PREFIX }
+      : {}),
+  },
 });
