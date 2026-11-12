@@ -105,7 +105,7 @@ try {
     });
     await request(`/v1/sections/${section.id}/enrollments`, "POST", {
       student_id: s.id,
-      roll_number: String(i + 1),
+      roll_number: String(i + 1).padStart(2, "0"),
       joined_on: date(-365),
     });
   }
@@ -154,6 +154,8 @@ try {
     ...Array(rows[6].length - row.length).fill(""),
   ]);
   correct.push(Array(rows[6].length).fill(""));
+  // Simulate spreadsheet conversion of 01–09 to 1–9 on save.
+  for (const row of correct.slice(7, 17)) row[1] = String(Number(row[1]));
   rows[7][4] = "999";
   const file = panel.getByLabel("Completed marks CSV", { exact: true });
   await file.setInputFiles({

@@ -18,6 +18,14 @@ CSV preserves the same wide paper-column structure as the PDF. CSV cannot store 
 
 The standard template contains no blank fields other than paper marks. The protected attendance value may be `N/A` when the period has not been configured or its attendance is incomplete. Attendance is calculated from the calendar and recorded attendance, never imported from a marks file.
 
+## Spreadsheet formatting of roll numbers
+
+Users do not need to restore leading zeros that Numbers, Excel or another spreadsheet editor removes from numeric roll numbers. For example, `01`, `1`, `001` and `1.0` are equivalent during validation. Urdu and Arabic digits are supported, too. The original formatted roll remains unchanged in the roster and result sheets.
+
+Rows are matched by their exact **student number**, not their roll, row order or name. Even if two rolls become the same displayed number after spreadsheet formatting, their marks stay attached to their respective student IDs. Keep student-number cells as text: student identifiers are not guessed or matched approximately.
+
+A genuinely different numeric roll, a changed alphanumeric roll, altered name, or changed attendance value is still rejected. The error now identifies the specific protected column. Attendance formatting such as `100.0` becoming `100` is accepted when the numeric value is exactly equal; attendance is never updated from this file. Long rolls are compared as text without floating-point conversion; rounded or scientific-notation conversions must be corrected rather than guessed.
+
 ## Blank cells, zero and explicit statuses
 
 | Cell value | Effect                                                                                                                                                |

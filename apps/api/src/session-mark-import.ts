@@ -80,6 +80,30 @@ const normal = (s: string) =>
       String(c.charCodeAt(0) - (c >= "۰" ? 1776 : 1632)),
     )
     .replaceAll("٫", ".");
+// The student number selects the manifest row. A roll is a display label, so
+// accept lossless spreadsheet formatting without changing the stored roster.
+function sameRoll(uploaded: string, expected: string) {
+  if (uploaded === spreadsheetText(expected)) return true;
+  const integer = (text: string) => {
+    const s = normal(text);
+    return /^\d+(?:\.0+)?$/.test(s)
+      ? s.replace(/\.0+$/, "").replace(/^0+(?=\d)/, "")
+      : null;
+  };
+  const left = integer(uploaded),
+    right = integer(expected);
+  return left !== null && right !== null && left === right;
+}
+function sameAttendance(uploaded: string, expected: string) {
+  if (uploaded === spreadsheetText(expected)) return true;
+  const left = normal(uploaded),
+    right = normal(expected);
+  return (
+    /^\d+(?:\.\d+)?$/.test(left) &&
+    /^\d+(?:\.\d+)?$/.test(right) &&
+    new Decimal(left).eq(new Decimal(right))
+  );
+}
 async function makeManifest(
   db: DB,
   a: Actor,
@@ -331,17 +355,35 @@ export function sessionMarkImport(app: FastifyInstance) {
             continue;
           }
           seen.add(student.id);
-          if (
-            row[1] !== spreadsheetText(student.roll) ||
-            row[2] !== spreadsheetText(student.name) ||
-            row[3] !== spreadsheetText(student.attendance)
-          ) {
-            errors.push({
-              row: line,
-              studentNumber: student.number,
+          const protectedFields = [
+            {
+              column: sheetIdentityHeaders[1],
+              valid: sameRoll(row[1], student.roll),
               message:
-                "A protected roll, student name or attendance cell changed. Edit only marks and optional exam flags.",
-            });
+                "Roll number differs from the downloaded template. Numeric formatting such as 01 → 1 is accepted; edit only marks and optional exam flags.",
+            },
+            {
+              column: sheetIdentityHeaders[2],
+              valid: row[2] === spreadsheetText(student.name),
+              message:
+                "Student name differs from the downloaded template. Keep the original name and edit only marks and optional exam flags.",
+            },
+            {
+              column: sheetIdentityHeaders[3],
+              valid: sameAttendance(row[3], student.attendance),
+              message:
+                "Attendance differs from the downloaded template. Attendance is calculated by the system; edit only marks and optional exam flags.",
+            },
+          ].filter((field) => !field.valid);
+          if (protectedFields.length) {
+            errors.push(
+              ...protectedFields.map(({ column, message }) => ({
+                row: line,
+                studentNumber: student.number,
+                column,
+                message,
+              })),
+            );
             continue;
           }
           for (const [index, paper] of m.papers.entries()) {

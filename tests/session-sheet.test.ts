@@ -378,6 +378,115 @@ test("Session CSV accepts rectangular spreadsheet exports and empty final rows w
   assert(invalid.errors.some((e: any) => e.message.includes("Student number")));
   assert.equal(await stored(f), undefined);
 });
+test("Session CSV accepts lossless roll/attendance formatting while stable student IDs prevent misrouting and actual changes stay protected", async () => {
+  const f = await fixture(5);
+  const rolls = ["01", "0002", "A03", "90071992547409930001", "1"];
+  for (const [i, rollNumber] of rolls.entries())
+    ok(
+      await call("PATCH", `/v1/enrollments/${f.students[i].enrollment.id}`, {
+        rollNumber,
+        leftOn: null,
+        state: "ACTIVE",
+        reason: "Set synthetic formatted roll labels",
+      }),
+    );
+  ok(
+    await call("PUT", f.base + "/window", {
+      attendanceFrom: day(-1),
+      attendanceThrough: day(-1),
+      examStart: day(-1),
+      examEnd: day(-1),
+    }),
+  );
+  ok(
+    await call("PUT", `/v1/sections/${f.section.id}/calendar`, [
+      {
+        schoolDate: day(-1),
+        isInstructional: true,
+        countsForAttendance: true,
+        note: "Synthetic format test day",
+      },
+    ]),
+  );
+  ok(
+    await call(
+      "PUT",
+      `/v1/sections/${f.section.id}/attendance/${day(-1)}`,
+      {
+        records: f.students.map((s, i) => ({
+          enrollmentId: s.enrollment.id,
+          status: i === 1 ? "HALF" : "PRESENT",
+        })),
+      },
+      { ...admin, "if-match": "0" },
+    ),
+  );
+  ok(
+    await call(
+      "POST",
+      `/v1/sections/${f.section.id}/attendance/${day(-1)}/submit`,
+      {},
+      { ...admin, "if-match": "1" },
+    ),
+  );
+  const rows = await template(f);
+  const rowFor = (records: string[][], i: number) =>
+    records.find((row) => row[0] === f.students[i].student.student_number)!;
+  assert.equal(rowFor(rows, 0)[3], "100.0");
+  assert.equal(rowFor(rows, 1)[3], "50.0");
+  rowFor(rows, 0)[1] = "1";
+  rowFor(rows, 1)[1] = "۲٫۰";
+  rowFor(rows, 3)[1] = "00090071992547409930001";
+  for (let i = 0; i < f.students.length; i++) {
+    const row = rowFor(rows, i);
+    row[3] = String(Number(row[3]));
+    row[4] = String(10 + i);
+  }
+  const p = await preview(f, rows);
+  assert(p.canApply);
+  assert.equal(p.summary.changedCells, 5);
+  ok(await apply(p));
+  for (let i = 0; i < f.students.length; i++) {
+    assert.equal((await stored(f, 0, i)).awarded, `${10 + i}.00`);
+    assert.equal(
+      (
+        await pool.query("SELECT roll_number FROM enrollments WHERE id=$1", [
+          f.students[i].enrollment.id,
+        ])
+      ).rows[0].roll_number,
+      rolls[i],
+    );
+  }
+  const fresh = await template(f);
+  for (const variant of ["1.000", "۰۰۱", "١", " 0001 "]) {
+    const edited = structuredClone(fresh);
+    rowFor(edited, 0)[1] = variant;
+    rowFor(edited, 0)[4] = "25";
+    assert((await preview(f, edited)).canApply, variant);
+  }
+  for (const [i, column, input, label] of [
+    [0, 1, "2", "نمبر شمار"],
+    [0, 1, "1.5", "نمبر شمار"],
+    [0, 1, "1e0", "نمبر شمار"],
+    [0, 1, "=1", "نمبر شمار"],
+    [2, 1, "A3", "نمبر شمار"],
+    [3, 1, "90071992547409930000", "نمبر شمار"],
+    [0, 2, "Changed student name", "نام طالب علم"],
+    [0, 3, "99.9", "حاضری %"],
+  ] as const) {
+    const edited = structuredClone(fresh);
+    rowFor(edited, i)[column] = input;
+    rowFor(edited, i)[4] = "26";
+    const invalid = await preview(f, edited);
+    assert(!invalid.canApply, input);
+    assert(
+      invalid.errors.some((e: any) => e.column === label),
+      input,
+    );
+    ok(await apply(invalid, true), 422);
+    assert.equal((await stored(f, 0, i)).version, 1);
+  }
+});
 test("Session CSV scope binds templates to class/session and preview ownership; revoked staff, Ameer and subject-only access are denied", async () => {
   const f = await fixture(),
     other = await fixture();
