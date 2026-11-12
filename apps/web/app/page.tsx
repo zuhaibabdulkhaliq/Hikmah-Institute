@@ -1,4 +1,8 @@
 "use client";
+
+import { InstituteDetails } from "../components/institute-details";
+import { AccountSettings } from "../components/account-settings";
+import { LanguageSwitch, useI18n } from "../components/language";
 import { useEffect, useState } from "react";
 import {
   AttendanceTotals,
@@ -58,6 +62,9 @@ const fields: Record<string, string[]> = {
 const labels = (s: string) =>
   s.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 export default function Home() {
+  const { t, language } = useI18n();
+
+  const [passwordChanged, setPasswordChanged] = useState(false);
   const [me, setMe] = useState<Identity | null>(null),
     [checkingSession, setCheckingSession] = useState(true),
     [view, setView] = useState("Overview"),
@@ -161,19 +168,24 @@ export default function Home() {
     return (
       <div className="session-loading" role="status">
         <Brand />
-        <span>Opening your workspace…</span>
+        <span>{t("Opening your workspace…")}</span>
       </div>
     );
   if (!me)
     return (
       <AuthFrame>
-        <div className="eyebrow">YOUR ACADEMIC WORKSPACE</div>
-        <h2 className="login-title">Welcome back.</h2>
+        <div className="eyebrow">{t("YOUR ACADEMIC WORKSPACE")}</div>
+        <h2 className="login-title">{t("Welcome back.")}</h2>
         <p className="login-intro">
-          A little clarity for your busy day.
+          {t("A little clarity for your busy day.")}
           <br />
-          Sign in to continue to Hikmah.
+          {t("Sign in to continue to Hikmah.")}
         </p>
+        {passwordChanged && (
+          <p role="status" className="notice success">
+            {t("Password changed. Sign in again with your new password.")}
+          </p>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -187,43 +199,45 @@ export default function Home() {
                 }),
               });
               setView("Overview");
+              setPasswordChanged(false);
               await load();
             });
           }}
         >
           <label>
-            Email address
+            {t("Email address")}
             <input
               type="email"
               name="email"
               required
               autoComplete="username"
-              placeholder="you@institute.edu"
+              placeholder={t("you@institute.edu")}
             />
           </label>
           <label>
-            Password
+            {t("Password")}
             <input
               type="password"
               name="password"
               required
               autoComplete="current-password"
-              placeholder="Enter your password"
+              placeholder={t("Enter your password")}
             />
           </label>
           {error && (
             <p role="alert" className="notice error">
-              {error}
+              {t(error)}
             </p>
           )}
           <button className="login-submit" disabled={busy}>
-            {busy ? "Signing in…" : "Sign in"}
+            {t(busy ? "Signing in…" : "Sign in")}
             <Icon name="arrow" />
           </button>
         </form>
         <p className="tiny" style={{ marginTop: 24 }}>
-          Forgot your password? Contact an administrator for a private recovery
-          link. Access is limited to assigned classes.
+          {t(
+            "Forgot your password? Contact an administrator for a private recovery link. Access is limited to assigned classes.",
+          )}
         </p>
       </AuthFrame>
     );
@@ -231,12 +245,12 @@ export default function Home() {
   return (
     <div className="shell">
       <a className="skip-link" href="#main-content">
-        Skip to content
+        {t("Skip to content")}
       </a>
       <aside>
-        <Brand subtitle="ACADEMIC OFFICE" />
-        <div className="nav-caption">WORKSPACE</div>
-        <nav aria-label="Main navigation">
+        <Brand subtitle={t("ACADEMIC OFFICE")} />
+        <div className="nav-caption">{t("WORKSPACE")}</div>
+        <nav aria-label={t("Main navigation")}>
           {navigation
             .filter((v) => canView(me, v))
             .map((v) => (
@@ -251,27 +265,36 @@ export default function Home() {
                 }}
               >
                 <Icon name={v} />
-                <span>{v}</span>
+                <span>{t(v)}</span>
               </button>
             ))}
         </nav>
         <footer>
           <span className="footer-symbol" aria-hidden="true">
-            ✧
+            {t("✧")}
           </span>
-          <strong>Learning with purpose.</strong>
+          <strong>{t("Learning with purpose.")}</strong>
           <span lang="ur" dir="rtl">
-            علم، عمل، حکمت
+            {t("علم، عمل، حکمت")}
           </span>
-          <span className="tiny">Hikmah staff workspace</span>
+          <span className="tiny">{t("Hikmah staff workspace")}</span>
         </footer>
       </aside>
       <div className="workspace">
         <header>
           <span className="breadcrumb">
-            Workspace <span aria-hidden="true">/</span> <strong>{view}</strong>
+            {t("Workspace ")}
+            <span aria-hidden="true">{t("/")}</span> <strong>{t(view)}</strong>
           </span>
           <div className="account">
+            <LanguageSwitch />
+            <AccountSettings
+              onChanged={() => {
+                setMe(null);
+                setPasswordChanged(true);
+                setError("");
+              }}
+            />
             <span className="avatar" aria-hidden="true">
               {me.name
                 .split(/\s+/)
@@ -282,13 +305,15 @@ export default function Home() {
             <span className="account-name">
               {me.name}
               <small>
-                {admin
-                  ? "Administrator"
-                  : me.managedSections.length
-                    ? "Mushrif"
-                    : me.teachingSections.length
-                      ? "Subject teacher"
-                      : "Ameer"}
+                {t(
+                  admin
+                    ? "Administrator"
+                    : me.managedSections.length
+                      ? "Mushrif"
+                      : me.teachingSections.length
+                        ? "Subject teacher"
+                        : "Ameer",
+                )}
               </small>
             </span>
             <button
@@ -309,7 +334,7 @@ export default function Home() {
               }
             >
               <Icon name="logout" />
-              <span>Sign out</span>
+              <span>{t("Sign out")}</span>
             </button>
           </div>
         </header>
@@ -317,42 +342,53 @@ export default function Home() {
           <div className={view === "Overview" ? "top overview-top" : "top"}>
             <div>
               <div className="eyebrow">
-                {view === "Overview"
-                  ? "A LITTLE CLARITY, EVERY DAY"
-                  : "HIKMAH ACADEMIC MANAGEMENT"}
+                {t(
+                  view === "Overview"
+                    ? "A LITTLE CLARITY, EVERY DAY"
+                    : "HIKMAH ACADEMIC MANAGEMENT",
+                )}
               </div>
               <h1>
-                {view === "Overview" ? "A clear view of your institute" : view}
+                {t(
+                  view === "Overview" ? "A clear view of your institute" : view,
+                )}
               </h1>
               <p>
-                {view === "Overview"
-                  ? "Your classes, your people, your next steps. All in one place."
-                  : "Your assigned records, kept accurate and accountable."}
+                {t(
+                  view === "Overview"
+                    ? "Your classes, your people, your next steps. All in one place."
+                    : "Your assigned records, kept accurate and accountable.",
+                )}
               </p>
             </div>
             <span className="tag date-tag">
               <Icon name="Attendance" />
-              {new Date().toLocaleDateString("en-GB", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-                timeZone: "Asia/Karachi",
-              })}
+              {t(
+                new Date().toLocaleDateString(
+                  language === "ur" ? "ur-PK" : "en-GB",
+                  {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    timeZone: "Asia/Karachi",
+                  },
+                ),
+              )}
             </span>
           </div>
           {error && (
             <div role="alert" className="notice error message">
-              {error}
+              {t(error)}
             </div>
           )}
           {message && (
             <div role="status" className="notice success message">
-              {message}
+              {t(message)}
             </div>
           )}
           {busy && (
             <div role="status" className="tiny">
-              Working…
+              {t("Working…")}
             </div>
           )}
           {["Attendance", "Exams & schemes", "Results & reports"].includes(
@@ -360,19 +396,20 @@ export default function Home() {
           ) && (
             <div className="toolbar">
               <select
-                aria-label="Section"
+                aria-label={t("Section")}
                 value={section}
                 onChange={(e) => setSection(e.target.value)}
               >
                 {allowedSections.map((s) => (
                   <option value={s.id} key={s.id}>
-                    {s.name} · {s.code}
+                    {s.name} {t(" · ")}
+                    {s.code}
                   </option>
                 ))}
               </select>
               {view !== "Attendance" && (
                 <select
-                  aria-label="Exam cycle"
+                  aria-label={t("Exam cycle")}
                   value={cycle}
                   onChange={(e) => setCycle(e.target.value)}
                 >
@@ -390,20 +427,22 @@ export default function Home() {
               <div className="split">
                 <div className="panel">
                   <div className="panelhead">
-                    <h2>Your sections</h2>
-                    <span className="tag">{sections.length} sections</span>
+                    <h2>{t("Your sections")}</h2>
+                    <span className="tag">
+                      {t(sections.length)} {t(" sections")}
+                    </span>
                   </div>
                   <div
                     className="tablewrap"
                     tabIndex={0}
-                    aria-label="Your sections"
+                    aria-label={t("Your sections")}
                   >
                     <table>
                       <thead>
                         <tr>
-                          <th>Section</th>
-                          <th>Academic year / program</th>
-                          <th>Next action</th>
+                          <th>{t("Section")}</th>
+                          <th>{t("Academic year / program")}</th>
+                          <th>{t("Next action")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -413,7 +452,8 @@ export default function Home() {
                               <strong>{s.name}</strong>
                             </td>
                             <td>
-                              {s.year_label} · {s.program_name}
+                              {s.year_label} {t(" · ")}
+                              {s.program_name}
                             </td>
                             <td>
                               <button
@@ -428,9 +468,11 @@ export default function Home() {
                                   );
                                 }}
                               >
-                                {admin || me.attendanceSections.includes(s.id)
-                                  ? "Open attendance →"
-                                  : "Open assigned papers →"}
+                                {t(
+                                  admin || me.attendanceSections.includes(s.id)
+                                    ? "Open attendance →"
+                                    : "Open assigned papers →",
+                                )}
                               </button>
                             </td>
                           </tr>
@@ -440,16 +482,19 @@ export default function Home() {
                   </div>
                   {!sections.length && (
                     <p className="empty">
-                      No assigned sections. An administrator can assign your
-                      access.
+                      {t(
+                        "No assigned sections. An administrator can assign your access.",
+                      )}
                     </p>
                   )}
                 </div>
                 <div className="panel">
-                  <div className="eyebrow">YOUR NEXT STEP</div>
-                  <h2>Quick actions</h2>
+                  <div className="eyebrow">{t("YOUR NEXT STEP")}</div>
+                  <h2>{t("Quick actions")}</h2>
                   <p>
-                    Open the tools available for your assigned responsibilities.
+                    {t(
+                      "Open the tools available for your assigned responsibilities.",
+                    )}
                   </p>
                   <div className="quick-actions">
                     {navigation
@@ -461,7 +506,7 @@ export default function Home() {
                           onClick={() => setView(v)}
                         >
                           <Icon name={v} />
-                          {v}
+                          {t(v)}
                           <Icon name="arrow" />
                         </button>
                       ))}
@@ -471,7 +516,10 @@ export default function Home() {
             </>
           )}
           {view === "Academic setup" && (
-            <Setup {...common} reload={load} sections={sections} />
+            <>
+              <InstituteDetails />
+              <Setup {...common} reload={load} sections={sections} />
+            </>
           )}
           {view === "Academic calendar" && (
             <AcademicCalendarPage
@@ -544,6 +592,8 @@ function Setup({
   reload,
   sections,
 }: Common & { reload: () => Promise<void>; sections: Section[] }) {
+  const { t } = useI18n();
+
   const [resource, setResource] = useState("academic-years"),
     [rows, setRows] = useState<any[]>([]),
     [refs, setRefs] = useState<Record<string, any[]>>({}),
@@ -584,13 +634,13 @@ function Setup({
               setEditing(null);
             }}
           >
-            {labels(r)}
+            {t(labels(r))}
           </button>
         ))}
       </div>
       <div className="panel">
         <h2>
-          {editing ? "Edit" : "Create"} {labels(resource)}
+          {t(editing ? "Edit" : "Create")} {t(labels(resource))}
         </h2>
         <form
           className="gridform"
@@ -619,7 +669,7 @@ function Setup({
         >
           {fields[resource].map((k) => (
             <label key={k}>
-              {labels(k)}
+              {t(labels(k))}
               {fk[k] ? (
                 <select name={k} required defaultValue={editing?.[k] ?? ""}>
                   {refs[fk[k]]?.map((r) => (
@@ -631,7 +681,9 @@ function Setup({
               ) : k === "state" ? (
                 <select name={k} defaultValue={editing?.[k] ?? "PLANNED"}>
                   {["PLANNED", "ACTIVE", "CLOSED", "ARCHIVED"].map((s) => (
-                    <option key={s}>{s}</option>
+                    <option key={s} value={s}>
+                      {t(s)}
+                    </option>
                   ))}
                 </select>
               ) : (
@@ -665,7 +717,7 @@ function Setup({
             </label>
           ))}
           <button disabled={busy}>
-            {editing ? "Save changes" : "Create record"}
+            {t(editing ? "Save changes" : "Create record")}
           </button>
           {editing && (
             <button
@@ -673,29 +725,33 @@ function Setup({
               className="secondary"
               onClick={() => setEditing(null)}
             >
-              Cancel edit
+              {t("Cancel edit")}
             </button>
           )}
         </form>
-        <div className="tablewrap" tabIndex={0} aria-label="Scrollable records">
+        <div
+          className="tablewrap"
+          tabIndex={0}
+          aria-label={t("Scrollable records")}
+        >
           <table>
             <thead>
               <tr>
                 {fields[resource].map((k) => (
-                  <th key={k}>{labels(k)}</th>
+                  <th key={k}>{t(labels(k))}</th>
                 ))}
-                <th>Record</th>
+                <th>{t("Record")}</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
                   {fields[resource].map((k) => (
-                    <td key={k}>{String(r[k] ?? "—")}</td>
+                    <td key={k}>{t(String(r[k] ?? "—"))}</td>
                   ))}
                   <td>
                     <button className="secondary" onClick={() => setEditing(r)}>
-                      Edit
+                      {t("Edit")}
                     </button>
                     <br />
                     <code className="tiny">{r.id}</code>
@@ -707,9 +763,9 @@ function Setup({
         </div>
       </div>
       <div className="panel">
-        <h2>Enroll learners & assign staff</h2>
+        <h2>{t("Enroll learners & assign staff")}</h2>
         <label>
-          Section
+          {t("Section")}
           <select
             value={selected}
             onChange={(e) => {
@@ -723,7 +779,7 @@ function Setup({
               );
             }}
           >
-            <option value="">Choose section</option>
+            <option value="">{t("Choose section")}</option>
             {sections.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -751,24 +807,25 @@ function Setup({
               }}
             >
               <label>
-                Student
+                {t("Student")}
                 <select name="student_id">
                   {refs.students?.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.student_number} · {s.full_name}
+                      {s.student_number} {t(" · ")}
+                      {s.full_name}
                     </option>
                   ))}
                 </select>
               </label>
               <label>
-                Roll number
+                {t("Roll number")}
                 <input name="roll_number" required />
               </label>
               <label>
-                Joined on
+                {t("Joined on")}
                 <input type="date" name="joined_on" required />
               </label>
-              <button>Enroll learner</button>
+              <button>{t("Enroll learner")}</button>
             </form>
             <p>
               {enrollments.map((e) => e.full_name).join(" · ") ||
@@ -793,7 +850,7 @@ function Setup({
               }}
             >
               <label>
-                User
+                {t("User")}
                 <select name="user_id">
                   {refs.users?.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -803,22 +860,24 @@ function Setup({
                 </select>
               </label>
               <label>
-                Role
+                {t("Role")}
                 <select name="role">
                   {["MUSHRIF", "AMEER"].map((r) => (
-                    <option key={r}>{r}</option>
+                    <option key={r} value={r}>
+                      {t(r)}
+                    </option>
                   ))}
                 </select>
               </label>
               <label>
-                Starts on
+                {t("Starts on")}
                 <input type="date" name="starts_on" required />
               </label>
               <label>
-                Ameer membership override reason
+                {t("Ameer membership override reason")}
                 <input name="ameerOverrideReason" />
               </label>
-              <button>Assign staff</button>
+              <button>{t("Assign staff")}</button>
             </form>
             <SectionTools
               section={selected}
@@ -840,6 +899,8 @@ function Attendance({
   canManage,
   onOpenCalendar,
 }: Common & { canManage: boolean; onOpenCalendar: () => void }) {
+  const { t } = useI18n();
+
   const [date, setDate] = useState(
       new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" }),
     ),
@@ -859,7 +920,9 @@ function Attendance({
   return (
     <>
       <details className="panel">
-        <summary>Attendance totals · academic year and exam sessions</summary>
+        <summary>
+          {t("Attendance totals · academic year and exam sessions")}
+        </summary>
         <AttendanceTotals
           section={section}
           run={run}
@@ -868,14 +931,15 @@ function Attendance({
       </details>
       <div className="panel">
         <div className="panelhead">
-          <h2>Daily attendance</h2>
+          <h2>{t("Daily attendance")}</h2>
           <span className="tag">
-            {sheet?.status ?? "Loading"} · v{sheet?.version ?? 0}
+            {t(sheet?.status ?? "Loading")} {t(" · v")}
+            {t(sheet?.version ?? 0)}
           </span>
         </div>
         <div className="toolbar">
           <input
-            aria-label="School date"
+            aria-label={t("School date")}
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
@@ -890,19 +954,24 @@ function Attendance({
               )
             }
           >
-            Mark all present
+            {t("Mark all present")}
           </button>
           <span className="tiny">
-            {Object.keys(records).length} of {sheet?.roster.length ?? 0} marked
+            {t(Object.keys(records).length)} {t(" of ")}
+            {t(sheet?.roster.length ?? 0)} {t(" marked")}
           </span>
         </div>
-        <div className="tablewrap" tabIndex={0} aria-label="Scrollable records">
+        <div
+          className="tablewrap"
+          tabIndex={0}
+          aria-label={t("Scrollable records")}
+        >
           <table>
             <thead>
               <tr>
-                <th>Roll</th>
-                <th>Learner</th>
-                <th>Status</th>
+                <th>{t("Roll")}</th>
+                <th>{t("Learner")}</th>
+                <th>{t("Status")}</th>
               </tr>
             </thead>
             <tbody>
@@ -923,14 +992,16 @@ function Attendance({
                         setRecords({ ...records, [s.id]: e.target.value })
                       }
                     >
-                      <option value="">Unmarked</option>
+                      <option value="">{t("Unmarked")}</option>
                       {records[s.id] === "LATE" && (
                         <option value="LATE" disabled>
-                          Legacy Late — review status
+                          {t("Legacy Late — review status")}
                         </option>
                       )}
                       {statuses.map((s) => (
-                        <option key={s}>{s}</option>
+                        <option key={s} value={s}>
+                          {t(s)}
+                        </option>
                       ))}
                     </select>
                   </td>
@@ -961,7 +1032,7 @@ function Attendance({
               })
             }
           >
-            Save draft
+            {t("Save draft")}
           </button>
           <button
             disabled={busy || sheet?.status !== "DRAFT"}
@@ -977,10 +1048,10 @@ function Attendance({
               })
             }
           >
-            Submit complete roster
+            {t("Submit complete roster")}
           </button>
           <button className="secondary" onClick={() => void run(load)}>
-            Refresh
+            {t("Refresh")}
           </button>
         </div>
         {canManage && (
@@ -1000,35 +1071,37 @@ function Attendance({
           >
             <input
               name="reason"
-              placeholder="Mushrif / administrator correction reason"
+              placeholder={t("Mushrif / administrator correction reason")}
               required
               minLength={5}
             />
-            <button className="secondary">Reopen</button>
+            <button className="secondary">{t("Reopen")}</button>
           </form>
         )}
       </div>
       <div className="panel">
-        <h2>Multiple-date attendance</h2>
+        <h2>{t("Multiple-date attendance")}</h2>
         {canManage && (
           <button className="secondary" onClick={onOpenCalendar}>
-            Open academic calendar
+            {t("Open academic calendar")}
           </button>
         )}
         <p>
-          Academic days and holidays are configured on the Academic calendar
-          page before attendance is entered.
+          {t(
+            "Academic days and holidays are configured on the Academic calendar page before attendance is entered.",
+          )}
         </p>
         <AttendancePermissions run={run} />
         <MultiDayGrid section={section} run={run} setMessage={setMessage} />
         <details>
-          <summary>Atomic multiple-day entry</summary>
+          <summary>{t("Atomic multiple-day entry")}</summary>
           <p>
-            Enter a JSON array of days: schoolDate, version, records
-            (enrollmentId, status). All days save together or none do.
+            {t(
+              "Enter a JSON array of days: schoolDate, version, records (enrollmentId, status). All days save together or none do.",
+            )}
           </p>
           <textarea
-            aria-label="Multiple day records"
+            aria-label={t("Multiple day records")}
             rows={8}
             value={bulk}
             onChange={(e) => setBulk(e.target.value)}
@@ -1046,7 +1119,7 @@ function Attendance({
               })
             }
           >
-            Save dates
+            {t("Save dates")}
           </button>
         </details>
       </div>
@@ -1060,6 +1133,8 @@ function Exams({
   admin,
   setMessage,
 }: Common & { admin: boolean }) {
+  const { t } = useI18n();
+
   const [data, setData] = useState<any>(null),
     [json, setJson] = useState("");
   const [revisionReason, setRevisionReason] = useState("");
@@ -1083,24 +1158,30 @@ function Exams({
         />
       )}
       <div className="notice">
-        {data?.approval
-          ? "Approved scheme. Paper maxima and group membership are locked."
-          : "Proposed scheme — approval required before official marks entry."}
+        {t(
+          data?.approval
+            ? "Approved scheme. Paper maxima and group membership are locked."
+            : "Proposed scheme — approval required before official marks entry.",
+        )}
       </div>
       <div className="panel">
-        <h2>Paper scheme & result groups</h2>
+        <h2>{t("Paper scheme & result groups")}</h2>
         {admin && (
           <SchemeEditor value={json} onChange={setJson} section={section} />
         )}
-        <div className="tablewrap" tabIndex={0} aria-label="Scrollable records">
+        <div
+          className="tablewrap"
+          tabIndex={0}
+          aria-label={t("Scrollable records")}
+        >
           <table>
             <thead>
               <tr>
-                <th>Code</th>
-                <th>Paper label (RTL)</th>
-                <th>Maximum</th>
-                <th>Type</th>
-                <th>Scheduled date</th>
+                <th>{t("Code")}</th>
+                <th>{t("Paper label (RTL)")}</th>
+                <th>{t("Maximum")}</th>
+                <th>{t("Type")}</th>
+                <th>{t("Scheduled date")}</th>
               </tr>
             </thead>
             <tbody>
@@ -1137,7 +1218,7 @@ function Exams({
                           defaultValue={p.date ?? ""}
                           required
                         />
-                        <button className="secondary">Save date</button>
+                        <button className="secondary">{t("Save date")}</button>
                       </form>
                     ) : (
                       (p.date ?? "Not scheduled")
@@ -1151,25 +1232,29 @@ function Exams({
         <div className="toolbar" style={{ marginTop: 18 }}>
           {data?.scheme.groups.map((g: any) => (
             <span className="tag" key={g.name}>
-              {g.name}: {g.paperCodes.join(" + ")} = {g.max}
+              {g.name}
+              {t(": ")}
+              {g.paperCodes.join(" + ")} {t(" = ")}
+              {g.max}
             </span>
           ))}
         </div>
         {admin && data?.approval && (
           <details>
-            <summary>Create a reviewed scheme revision</summary>
+            <summary>{t("Create a reviewed scheme revision")}</summary>
             <p>
-              Earlier papers, marks and reports are retained. Copied marks must
-              fit the new maxima and require fresh submission and approval.
+              {t(
+                "Earlier papers, marks and reports are retained. Copied marks must fit the new maxima and require fresh submission and approval.",
+              )}
             </p>
             <textarea
-              aria-label="Revised paper scheme"
+              aria-label={t("Revised paper scheme")}
               rows={16}
               value={json}
               onChange={(e) => setJson(e.target.value)}
             />
             <label>
-              Reason
+              {t("Reason")}
               <input
                 minLength={5}
                 value={revisionReason}
@@ -1194,21 +1279,21 @@ function Exams({
                 })
               }
             >
-              Create new draft revision
+              {t("Create new draft revision")}
             </button>
           </details>
         )}
         {admin && !data?.approval && (
           <>
             <details>
-              <summary>Edit paper definitions & groups</summary>
+              <summary>{t("Edit paper definitions & groups")}</summary>
               <p>
-                Every paper uses a section-subject offering ID. Duplicate labels
-                are allowed; codes must remain distinct. Every paper must belong
-                to one complete group.
+                {t(
+                  "Every paper uses a section-subject offering ID. Duplicate labels are allowed; codes must remain distinct. Every paper must belong to one complete group.",
+                )}
               </p>
               <textarea
-                aria-label="Paper scheme"
+                aria-label={t("Paper scheme")}
                 rows={18}
                 value={json}
                 onChange={(e) => setJson(e.target.value)}
@@ -1222,7 +1307,7 @@ function Exams({
                   })
                 }
               >
-                Save scheme
+                {t("Save scheme")}
               </button>
             </details>
             <button
@@ -1237,22 +1322,25 @@ function Exams({
                 })
               }
             >
-              Approve paper scheme
+              {t("Approve paper scheme")}
             </button>
           </>
         )}
       </div>
       {admin && (
         <div className="panel">
-          <h2>Attendance window & exam dates</h2>
+          <h2>{t("Attendance window & exam dates")}</h2>
           <p>
-            Attendance and exam periods are configured separately. Existing
-            dates:{" "}
-            {data?.window
-              ? String(data.window.attendance_from).slice(0, 10) +
-                " — " +
-                String(data.window.attendance_through).slice(0, 10)
-              : "Not configured"}
+            {t(
+              "Attendance and exam periods are configured separately. Existing dates:",
+            )}{" "}
+            {t(
+              data?.window
+                ? String(data.window.attendance_from).slice(0, 10) +
+                    " — " +
+                    String(data.window.attendance_through).slice(0, 10)
+                : "Not configured",
+            )}
           </p>
           <form
             className="gridform"
@@ -1276,26 +1364,26 @@ function Exams({
             }}
           >
             <label>
-              Attendance from
+              {t("Attendance from")}
               <input type="date" name="from" required />
             </label>
             <label>
-              Attendance through
+              {t("Attendance through")}
               <input type="date" name="through" required />
             </label>
             <label>
-              Exam start
+              {t("Exam start")}
               <input type="date" name="examStart" />
             </label>
             <label>
-              Exam end
+              {t("Exam end")}
               <input type="date" name="examEnd" />
             </label>
             <label>
-              Acknowledge intentional overlapping windows
+              {t("Acknowledge intentional overlapping windows")}
               <input type="checkbox" name="overlap" />
             </label>
-            <button>Save dates</button>
+            <button>{t("Save dates")}</button>
           </form>
         </div>
       )}
@@ -1313,6 +1401,8 @@ function Marks({
   managedSections: string[];
   onSessionImport: (section: string, cycle: string) => void;
 }) {
+  const { t } = useI18n();
+
   const [markReason, setMarkReason] = useState("");
   const [csv, setCsv] = useState("");
   const [imported, setImported] = useState<any>(null);
@@ -1337,20 +1427,22 @@ function Marks({
     <div className="panel">
       <div className="toolbar">
         <select
-          aria-label="Paper"
+          aria-label={t("Paper")}
           value={paper}
           onChange={(e) => setPaper(e.target.value)}
         >
           {papers.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.section_name ?? ""} · {p.cycle_title ?? ""} · {p.paper_code} ·{" "}
-              {p.title} / {p.max_marks}
+              {p.section_name ?? ""} {t(" · ")}
+              {p.cycle_title ?? ""} {t(" · ")}
+              {p.paper_code} {t(" ·")} {p.title} {t(" / ")}
+              {p.max_marks}
             </option>
           ))}
         </select>
         <span className="tag">
-          {data?.paper.state} ·{" "}
-          {data?.paper.submitted_at ? "Submitted" : "Draft marks"}
+          {t(data?.paper.state)} {t(" ·")}{" "}
+          {t(data?.paper.submitted_at ? "Submitted" : "Draft marks")}
         </span>
       </div>
       {data && (
@@ -1362,11 +1454,11 @@ function Marks({
                 onSessionImport(data.paper.section_id, data.paper.exam_cycle_id)
               }
             >
-              Import a full class CSV / open session sheet
+              {t("Import a full class CSV / open session sheet")}
             </button>
           )}
           <label>
-            Change or import reason
+            {t("Change or import reason")}
             <input
               value={markReason}
               onChange={(e) => setMarkReason(e.target.value)}
@@ -1374,14 +1466,14 @@ function Marks({
             />
           </label>
           <details>
-            <summary>Import assigned-paper marks from CSV</summary>
+            <summary>{t("Import assigned-paper marks from CSV")}</summary>
             <p>
-              Use student_number and the paper code as column headers. Other
-              paper columns are ignored. Empty cells remain unknown; numeric
-              zero is a graded score.
+              {t(
+                "Use student_number and the paper code as column headers. Other paper columns are ignored. Empty cells remain unknown; numeric zero is a graded score.",
+              )}
             </p>
             <textarea
-              aria-label="Marks CSV"
+              aria-label={t("Marks CSV")}
               rows={6}
               value={csv}
               onChange={(e) => {
@@ -1401,7 +1493,7 @@ function Marks({
                 )
               }
             >
-              Preview marks import
+              {t("Preview marks import")}
             </button>
             {imported && (
               <>
@@ -1420,7 +1512,7 @@ function Marks({
                     })
                   }
                 >
-                  Apply previewed marks
+                  {t("Apply previewed marks")}
                 </button>
               </>
             )}
@@ -1428,16 +1520,19 @@ function Marks({
           <div
             className="tablewrap"
             tabIndex={0}
-            aria-label="Scrollable records"
+            aria-label={t("Scrollable records")}
           >
             <table>
               <thead>
                 <tr>
-                  <th>Learner</th>
-                  <th>State</th>
-                  <th>Awarded / {data.paper.max_marks}</th>
-                  <th>Exam leave</th>
-                  <th>Given on time</th>
+                  <th>{t("Learner")}</th>
+                  <th>{t("State")}</th>
+                  <th>
+                    {t("Awarded / ")}
+                    {data.paper.max_marks}
+                  </th>
+                  <th>{t("Exam leave")}</th>
+                  <th>{t("Given on time")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1474,7 +1569,9 @@ function Marks({
                           "NOT_APPLICABLE",
                           "UNKNOWN_LEGACY_BLANK",
                         ].map((s) => (
-                          <option key={s}>{s}</option>
+                          <option key={s} value={s}>
+                            {t(s)}
+                          </option>
                         ))}
                       </select>
                     </td>
@@ -1516,7 +1613,7 @@ function Marks({
                             setData({ ...data, entries });
                           }}
                         />
-                        Leave / concession
+                        {t("Leave / concession")}
                       </label>
                     </td>
                     <td>
@@ -1532,9 +1629,9 @@ function Marks({
                             setData({ ...data, entries });
                           }}
                         />
-                        On time
+                        {t("On time")}
                       </label>
-                      {e.onTime == null && <small>Not confirmed</small>}
+                      {e.onTime == null && <small>{t("Not confirmed")}</small>}
                     </td>
                   </tr>
                 ))}
@@ -1569,7 +1666,7 @@ function Marks({
                 })
               }
             >
-              Save marks
+              {t("Save marks")}
             </button>
             <button
               className="secondary"
@@ -1584,7 +1681,7 @@ function Marks({
                 })
               }
             >
-              Submit paper
+              {t("Submit paper")}
             </button>
             {canManage && (
               <button
@@ -1599,7 +1696,7 @@ function Marks({
                   })
                 }
               >
-                Approve marks
+                {t("Approve marks")}
               </button>
             )}
           </div>
@@ -1620,20 +1717,22 @@ function Marks({
             >
               <input
                 name="reason"
-                placeholder="Correction reason"
+                placeholder={t("Correction reason")}
                 required
                 minLength={5}
               />
-              <button className="secondary">Reopen paper</button>
+              <button className="secondary">{t("Reopen paper")}</button>
             </form>
           )}
         </>
       )}
-      {!papers.length && <p className="empty">No papers assigned.</p>}
+      {!papers.length && <p className="empty">{t("No papers assigned.")}</p>}
     </div>
   );
 }
 function Policies({ run, setMessage }: Common) {
+  const { t } = useI18n();
+
   const [data, setData] = useState<any>(null),
     [policy, setPolicy] = useState("");
   async function load() {
@@ -1646,28 +1745,24 @@ function Policies({ run, setMessage }: Common) {
   }, []);
   return (
     <div className="panel">
-      <h2>Academic policy approval</h2>
+      <h2>{t("Academic policy approval")}</h2>
       <div className="notice">
-        {data?.config.approvedPolicy
-          ? "An approved policy exists. Saving a draft removes approval until reviewed again."
-          : "Unapproved. No official grade, attendance percentage or ranking will be published."}
+        {t(
+          data?.config.approvedPolicy
+            ? "An approved policy exists. Saving a draft removes approval until reviewed again."
+            : "Unapproved. No official grade, attendance percentage or ranking will be published.",
+        )}
       </div>
       <p>
-        The institutional pass minimum is 40%. Positions require more than 80%,
-        every paper on time, no exam leave, and a top-three shared position.
-        Present earns 1, Half earns 0.5, Absent earns 0 and Leave is excluded.
-        Review the remaining configuration, a backdate window, contiguous grade
-        bands covering 0–100 (exclusive final bound 101), eligibility
-        (ACTIVE_AT_WINDOW_END or ANY_ENROLLED_IN_WINDOW), COMPETITION or DENSE
-        ranking, missing mark resolutions (ABSENT: BLOCK/ZERO; EXEMPT:
-        BLOCK/EXCLUDE), pass rules, and rounding (HALF_UP/HALF_EVEN/DOWN). No
-        thresholds have been inferred.
+        {t(
+          "The institutional pass minimum is 40%. Positions require more than 80%, every paper on time, no exam leave, and a top-three shared position. Present earns 1, Half earns 0.5, Absent earns 0 and Leave is excluded. Review the remaining configuration, a backdate window, contiguous grade bands covering 0–100 (exclusive final bound 101), eligibility (ACTIVE_AT_WINDOW_END or ANY_ENROLLED_IN_WINDOW), COMPETITION or DENSE ranking, missing mark resolutions (ABSENT: BLOCK/ZERO; EXEMPT: BLOCK/EXCLUDE), pass rules, and rounding (HALF_UP/HALF_EVEN/DOWN). No thresholds have been inferred.",
+        )}
       </p>
       <PolicyEditor value={policy} onChange={setPolicy} />
       <details>
-        <summary>Advanced policy data</summary>
+        <summary>{t("Advanced policy data")}</summary>
         <textarea
-          aria-label="Academic policy"
+          aria-label={t("Academic policy")}
           rows={25}
           value={policy}
           onChange={(e) => setPolicy(e.target.value)}
@@ -1697,7 +1792,7 @@ function Policies({ run, setMessage }: Common) {
               })
             }
           >
-            {approve ? "Approve institute policy" : "Save unapproved draft"}
+            {t(approve ? "Approve institute policy" : "Save unapproved draft")}
           </button>
         ))}
       </div>
@@ -1711,6 +1806,8 @@ function Results({
   admin,
   setMessage,
 }: Common & { admin: boolean }) {
+  const { t } = useI18n();
+
   const [performanceRefresh, setPerformanceRefresh] = useState(0);
   const [publishedRefresh, setPublishedRefresh] = useState(0);
   const [report, setReport] = useState<any>(null),
@@ -1744,10 +1841,11 @@ function Results({
         run={run}
       />
       <div className="panel">
-        <h2>Preflight & publication</h2>
+        <h2>{t("Preflight & publication")}</h2>
         <p>
-          Every counting attendance day must be submitted and all marks
-          resolved. Publication creates stable PDFs and an immutable revision.
+          {t(
+            "Every counting attendance day must be submitted and all marks resolved. Publication creates stable PDFs and an immutable revision.",
+          )}
         </p>
         <button
           onClick={() =>
@@ -1761,36 +1859,38 @@ function Results({
             )
           }
         >
-          Validate & preview
+          {t("Validate & preview")}
         </button>
         {report && (
           <>
             <div
               className={"notice " + (report.canPublish ? "success" : "error")}
             >
-              {report.canPublish
-                ? "All publication checks passed."
-                : `${report.blockingErrors.length} blocking issues`}
+              {t(
+                report.canPublish
+                  ? "All publication checks passed."
+                  : `${report.blockingErrors.length} blocking issues`,
+              )}
               <ul>
                 {report.blockingErrors.map((e: string) => (
-                  <li key={e}>{e}</li>
+                  <li key={e}>{t(e)}</li>
                 ))}
               </ul>
             </div>
             <div
               className="tablewrap"
               tabIndex={0}
-              aria-label="Scrollable records"
+              aria-label={t("Scrollable records")}
             >
               <table>
                 <thead>
                   <tr>
-                    <th>Student</th>
-                    <th>Groups</th>
-                    <th>Total</th>
-                    <th>Percent</th>
-                    <th>Grade</th>
-                    <th>Rank</th>
+                    <th>{t("Student")}</th>
+                    <th>{t("Groups")}</th>
+                    <th>{t("Total")}</th>
+                    <th>{t("Percent")}</th>
+                    <th>{t("Grade")}</th>
+                    <th>{t("Rank")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1799,10 +1899,11 @@ function Results({
                       <td>{s.name}</td>
                       <td>{s.groups.map((g: any) => g.awarded).join(" / ")}</td>
                       <td>
-                        {s.total} / {s.possible}
+                        {s.total} {t(" / ")}
+                        {s.possible}
                       </td>
                       <td>{s.displayPercent}</td>
-                      <td>{s.grade ?? "Policy required"}</td>
+                      <td>{t(s.grade ?? "Policy required")}</td>
                       <td>{s.rank ?? "—"}</td>
                     </tr>
                   ))}
@@ -1812,8 +1913,8 @@ function Results({
             {admin && (
               <div className="toolbar" style={{ marginTop: 20 }}>
                 <input
-                  placeholder="Reason for correction revision"
-                  aria-label="Correction reason"
+                  placeholder={t("Reason for correction revision")}
+                  aria-label={t("Correction reason")}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                 />
@@ -1838,7 +1939,7 @@ function Results({
                     })
                   }
                 >
-                  Publish result revision
+                  {t("Publish result revision")}
                 </button>
               </div>
             )}
@@ -1846,22 +1947,26 @@ function Results({
         )}
       </div>
       <div className="panel">
-        <h2>Publication archive</h2>
+        <h2>{t("Publication archive")}</h2>
         {selectedRuns.map((r) => (
           <div key={r.id} className="toolbar">
             <span className="tag">
-              Revision {r.revision} · {r.state}
+              {t("Revision ")}
+              {r.revision} {t(" · ")}
+              {t(r.state)}
             </span>
-            <a href={`/v1/results/${r.id}/sectionsheet.pdf`}>Class PDF ↓</a>
-            <a href={`/v1/results/${r.id}/export.csv`}>CSV ↓</a>
+            <a href={`/v1/results/${r.id}/sectionsheet.pdf`}>
+              {t("Class PDF ↓")}
+            </a>
+            <a href={`/v1/results/${r.id}/export.csv`}>{t("CSV ↓")}</a>
             <details>
-              <summary>Individual report cards</summary>
+              <summary>{t("Individual report cards")}</summary>
               {r.students?.map((s: any) => (
                 <p key={s.enrollmentId}>
                   <a
                     href={`/v1/results/${r.id}/students/${s.enrollmentId}.pdf`}
                   >
-                    {s.name} · A4 PDF ↓
+                    {s.name} {t(" · A4 PDF ↓")}
                   </a>
                 </p>
               ))}
@@ -1870,7 +1975,7 @@ function Results({
         ))}
         {!selectedRuns.length && (
           <p className="empty">
-            No published results for this class and exam session yet.
+            {t("No published results for this class and exam session yet.")}
           </p>
         )}
       </div>
@@ -1878,6 +1983,8 @@ function Results({
   );
 }
 function People({ run, setMessage }: Common) {
+  const { t } = useI18n();
+
   const [users, setUsers] = useState<any[]>([]);
   const [recoveryLink, setRecoveryLink] = useState("");
   async function load() {
@@ -1888,12 +1995,12 @@ function People({ run, setMessage }: Common) {
   }, []);
   return (
     <div className="panel">
-      <h2>Staff access</h2>
+      <h2>{t("Staff access")}</h2>
       <CreateAccount run={run} onSaved={load} />
       <ChangePassword run={run} users={users} />
       <Invite run={run} />
       <details>
-        <summary>Administrator-assisted password recovery</summary>
+        <summary>{t("Administrator-assisted password recovery")}</summary>
         <form
           className="gridform"
           onSubmit={(e) => {
@@ -1912,7 +2019,7 @@ function People({ run, setMessage }: Common) {
           }}
         >
           <label>
-            Staff account
+            {t("Staff account")}
             <select name="user">
               {users
                 .filter((u) => u.active)
@@ -1924,34 +2031,39 @@ function People({ run, setMessage }: Common) {
             </select>
           </label>
           <label>
-            Recovery reason
+            {t("Recovery reason")}
             <input name="reason" minLength={5} required />
           </label>
-          <button>Create private recovery link</button>
+          <button>{t("Create private recovery link")}</button>
         </form>
         {recoveryLink && (
           <div className="notice">
-            Deliver this single-use link privately after verifying staff
-            identity. It expires in two hours and using it revokes existing
-            sessions.
+            {t(
+              "Deliver this single-use link privately after verifying staff identity. It expires in two hours and using it revokes existing sessions.",
+            )}
             <br />
-            <a href={recoveryLink}>{recoveryLink}</a>
+            <a href={recoveryLink}>{t(recoveryLink)}</a>
           </div>
         )}
       </details>
       <p>
-        Changes revoke existing sessions immediately. The last active
-        administrator cannot be removed.
+        {t(
+          "Changes revoke existing sessions immediately. The last active administrator cannot be removed.",
+        )}
       </p>
-      <div className="tablewrap" tabIndex={0} aria-label="Scrollable records">
+      <div
+        className="tablewrap"
+        tabIndex={0}
+        aria-label={t("Scrollable records")}
+      >
         <table>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Access</th>
+              <th>{t("Name")}</th>
+              <th>{t("Email")}</th>
+              <th>{t("Role")}</th>
+              <th>{t("Status")}</th>
+              <th>{t("Access")}</th>
             </tr>
           </thead>
           <tbody>
@@ -1960,7 +2072,7 @@ function People({ run, setMessage }: Common) {
                 <td>{u.display_name}</td>
                 <td>{u.email}</td>
                 <td>{u.roles.join(", ") || "Assigned staff"}</td>
-                <td>{u.active ? "Active" : "Disabled"}</td>
+                <td>{t(u.active ? "Active" : "Disabled")}</td>
                 <td>
                   <button
                     className="secondary"
@@ -1978,7 +2090,7 @@ function People({ run, setMessage }: Common) {
                       })
                     }
                   >
-                    {u.active ? "Disable" : "Activate"}
+                    {t(u.active ? "Disable" : "Activate")}
                   </button>{" "}
                   <button
                     className="secondary"
@@ -1996,7 +2108,11 @@ function People({ run, setMessage }: Common) {
                       })
                     }
                   >
-                    {u.roles.includes("ADMIN") ? "Revoke admin" : "Grant admin"}
+                    {t(
+                      u.roles.includes("ADMIN")
+                        ? "Revoke admin"
+                        : "Grant admin",
+                    )}
                   </button>
                 </td>
               </tr>
@@ -2008,28 +2124,34 @@ function People({ run, setMessage }: Common) {
   );
 }
 function Audit() {
+  const { t } = useI18n();
+
   const [rows, setRows] = useState<any[]>([]);
   useEffect(() => {
     void api<any[]>("/v1/audit").then(setRows);
   }, []);
   return (
     <div className="panel">
-      <h2>Audit history</h2>
-      <p>Most recent 200 events. Audit rows are append-only.</p>
-      <div className="tablewrap" tabIndex={0} aria-label="Scrollable records">
+      <h2>{t("Audit history")}</h2>
+      <p>{t("Most recent 200 events. Audit rows are append-only.")}</p>
+      <div
+        className="tablewrap"
+        tabIndex={0}
+        aria-label={t("Scrollable records")}
+      >
         <table>
           <thead>
             <tr>
-              <th>When</th>
-              <th>Action</th>
-              <th>Object</th>
-              <th>Reason</th>
+              <th>{t("When")}</th>
+              <th>{t("Action")}</th>
+              <th>{t("Object")}</th>
+              <th>{t("Reason")}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id}>
-                <td>{new Date(r.event_at).toLocaleString()}</td>
+                <td>{t(new Date(r.event_at).toLocaleString())}</td>
                 <td>{r.action}</td>
                 <td>{r.object_type}</td>
                 <td>{r.reason ?? "—"}</td>
@@ -2042,6 +2164,8 @@ function Audit() {
   );
 }
 function Invite({ run }: { run: Common["run"] }) {
+  const { t } = useI18n();
+
   const [url, setUrl] = useState("");
   return (
     <>
@@ -2060,21 +2184,22 @@ function Invite({ run }: { run: Common["run"] }) {
         }}
       >
         <label>
-          Staff name
+          {t("Staff name")}
           <input name="name" required />
         </label>
         <label>
-          Email
+          {t("Email")}
           <input type="email" name="email" required />
         </label>
-        <button>Create private invitation</button>
+        <button>{t("Create private invitation")}</button>
       </form>
       {url && (
         <div className="notice">
-          Deliver this single-use link privately to the invited staff member. It
-          expires in 48 hours.
+          {t(
+            "Deliver this single-use link privately to the invited staff member. It expires in 48 hours.",
+          )}
           <br />
-          <a href={url}>{url}</a>
+          <a href={url}>{t(url)}</a>
         </div>
       )}
     </>
@@ -2091,6 +2216,8 @@ function SectionTools({
   run: Common["run"];
   setMessage: (s: string) => void;
 }) {
+  const { t } = useI18n();
+
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [offerings, setOfferings] = useState<any[]>([]),
     [csv, setCsv] = useState(""),
@@ -2103,7 +2230,7 @@ function SectionTools({
   }, [section]);
   return (
     <>
-      <h3>Subject offerings & teachers</h3>
+      <h3>{t("Subject offerings & teachers")}</h3>
       <form
         className="gridform"
         onSubmit={(e) => {
@@ -2120,7 +2247,7 @@ function SectionTools({
         }}
       >
         <label>
-          Subject
+          {t("Subject")}
           <select name="subject_id">
             {refs.subjects?.map((s) => (
               <option value={s.id} key={s.id}>
@@ -2129,7 +2256,7 @@ function SectionTools({
             ))}
           </select>
         </label>
-        <button>Offer subject</button>
+        <button>{t("Offer subject")}</button>
       </form>
       <form
         className="gridform"
@@ -2149,17 +2276,18 @@ function SectionTools({
         }}
       >
         <label>
-          Offering
+          {t("Offering")}
           <select name="offering">
             {offerings.map((o) => (
               <option key={o.id} value={o.id}>
-                {o.name_ur ?? o.name_en} · {o.id}
+                {o.name_ur ?? o.name_en} {t(" · ")}
+                {o.id}
               </option>
             ))}
           </select>
         </label>
         <label>
-          Teacher
+          {t("Teacher")}
           <select name="teacher">
             {refs.users?.map((u) => (
               <option key={u.id} value={u.id}>
@@ -2169,21 +2297,20 @@ function SectionTools({
           </select>
         </label>
         <label>
-          Assignment starts
+          {t("Assignment starts")}
           <input name="starts_on" type="date" required />
         </label>
-        <button>Assign subject teacher</button>
+        <button>{t("Assign subject teacher")}</button>
       </form>
       <details>
-        <summary>Student CSV import · preview before applying</summary>
+        <summary>{t("Student CSV import · preview before applying")}</summary>
         <p>
-          Map your source columns to student number, learner name, roll number
-          and joining date. Canonical headers work without a mapping. UTF-8 Urdu
-          is supported. Duplicate IDs and spreadsheet formulas are rejected.
-          Each apply is atomic.
+          {t(
+            "Map your source columns to student number, learner name, roll number and joining date. Canonical headers work without a mapping. UTF-8 Urdu is supported. Duplicate IDs and spreadsheet formulas are rejected. Each apply is atomic.",
+          )}
         </p>
         <textarea
-          aria-label="Student import CSV"
+          aria-label={t("Student import CSV")}
           rows={8}
           value={csv}
           onChange={(e) => {
@@ -2196,7 +2323,8 @@ function SectionTools({
           {["student_number", "full_name", "roll_number", "joined_on"].map(
             (field) => (
               <label key={field}>
-                Source column for {labels(field)}
+                {t("Source column for ")}
+                {t(labels(field))}
                 <input
                   list="csv-import-headers"
                   value={mapping[field] ?? field}
@@ -2238,7 +2366,7 @@ function SectionTools({
             )
           }
         >
-          Preview CSV
+          {t("Preview CSV")}
         </button>
         {preview && (
           <>
@@ -2257,7 +2385,7 @@ function SectionTools({
                 })
               }
             >
-              Apply validated import
+              {t("Apply validated import")}
             </button>
           </>
         )}
@@ -2267,6 +2395,8 @@ function SectionTools({
   );
 }
 function Corrections({ run }: { run: Common["run"] }) {
+  const { t } = useI18n();
+
   const [requests, setRequests] = useState<any[]>([]);
   async function load() {
     setRequests(await api<any[]>("/v1/corrections"));
@@ -2276,7 +2406,7 @@ function Corrections({ run }: { run: Common["run"] }) {
   }, []);
   return (
     <div className="panel">
-      <h2>Historical attendance corrections</h2>
+      <h2>{t("Historical attendance corrections")}</h2>
       {requests.map((r) => (
         <form
           key={r.id}
@@ -2297,31 +2427,34 @@ function Corrections({ run }: { run: Common["run"] }) {
           }}
         >
           <h3>
-            {r.name} · {String(r.school_date).slice(0, 10)}
+            {r.name} {t(" · ")}
+            {String(r.school_date).slice(0, 10)}
           </h3>
           <p>
-            {r.display_name}: {r.reason}
+            {r.display_name}
+            {t(": ")}
+            {r.reason}
           </p>
-          <span className="tag">{r.status}</span>
+          <span className="tag">{t(r.status)}</span>
           {r.status === "OPEN" && (
             <div className="toolbar">
-              <select aria-label="Decision" name="decision">
-                <option value="approve">Approve & reopen</option>
-                <option value="reject">Reject</option>
+              <select aria-label={t("Decision")} name="decision">
+                <option value="approve">{t("Approve & reopen")}</option>
+                <option value="reject">{t("Reject")}</option>
               </select>
               <input
-                aria-label="Review reason"
+                aria-label={t("Review reason")}
                 name="reason"
-                placeholder="Review reason"
+                placeholder={t("Review reason")}
                 minLength={5}
                 required
               />
-              <button>Record decision</button>
+              <button>{t("Record decision")}</button>
             </div>
           )}
         </form>
       ))}
-      {!requests.length && <p>No correction requests.</p>}
+      {!requests.length && <p>{t("No correction requests.")}</p>}
     </div>
   );
 }
@@ -2334,6 +2467,8 @@ function MultiDayGrid({
   run: Common["run"];
   setMessage: (s: string) => void;
 }) {
+  const { t } = useI18n();
+
   const [from, setFrom] = useState(""),
     [through, setThrough] = useState(""),
     [days, setDays] = useState<(Sheet & { schoolDate: string })[]>([]),
@@ -2370,10 +2505,10 @@ function MultiDayGrid({
   );
   return (
     <details>
-      <summary>Attendance grid · up to 31 dates</summary>
+      <summary>{t("Attendance grid · up to 31 dates")}</summary>
       <div className="toolbar">
         <label>
-          From
+          {t("From")}
           <input
             type="date"
             value={from}
@@ -2381,35 +2516,36 @@ function MultiDayGrid({
           />
         </label>
         <label>
-          Through
+          {t("Through")}
           <input
             type="date"
             value={through}
             onChange={(e) => setThrough(e.target.value)}
           />
         </label>
-        <button onClick={() => void run(load)}>Load date grid</button>
+        <button onClick={() => void run(load)}>{t("Load date grid")}</button>
       </div>
       {days.length > 0 && (
         <>
           <p>
-            Submitted and locked days are read-only. Saving requires explicit
-            confirmation and applies every editable date in one transaction.
+            {t(
+              "Submitted and locked days are read-only. Saving requires explicit confirmation and applies every editable date in one transaction.",
+            )}
           </p>
           <div
             className="tablewrap"
             tabIndex={0}
-            aria-label="Scrollable records"
+            aria-label={t("Scrollable records")}
           >
             <table>
               <thead>
                 <tr>
-                  <th>Learner</th>
+                  <th>{t("Learner")}</th>
                   {days.map((d) => (
                     <th key={d.schoolDate}>
                       {d.schoolDate}
                       <br />
-                      {d.status}
+                      {t(d.status)}
                     </th>
                   ))}
                 </tr>
@@ -2435,9 +2571,11 @@ function MultiDayGrid({
                               })
                             }
                           >
-                            <option value="">Unmarked</option>
+                            <option value="">{t("Unmarked")}</option>
                             {statuses.map((s) => (
-                              <option key={s}>{s}</option>
+                              <option key={s} value={s}>
+                                {t(s)}
+                              </option>
                             ))}
                           </select>
                         ) : (
@@ -2478,14 +2616,14 @@ function MultiDayGrid({
             }}
           >
             <label>
-              <input type="checkbox" required />I confirm saving the selected
-              editable dates.
+              <input type="checkbox" required />
+              {t("I confirm saving the selected editable dates.")}
             </label>
-            <button>Save all editable dates</button>
+            <button>{t("Save all editable dates")}</button>
           </form>
         </>
       )}
-      {days.length === 0 && <p>No dates loaded.</p>}
+      {days.length === 0 && <p>{t("No dates loaded.")}</p>}
     </details>
   );
 }
@@ -2496,11 +2634,15 @@ function PolicyEditor({
   value: string;
   onChange: (s: string) => void;
 }) {
+  const { t } = useI18n();
+
   let p: any;
   try {
     p = JSON.parse(value);
   } catch {
-    return <p>Correct the advanced policy data to continue with the form.</p>;
+    return (
+      <p>{t("Correct the advanced policy data to continue with the form.")}</p>
+    );
   }
   if (!p?.attendance) return null;
   const change = (fn: (copy: any) => void) => {
@@ -2516,9 +2658,9 @@ function PolicyEditor({
     max = 100,
   ) => (
     <label>
-      {label}
+      {t(label)}
       <input
-        aria-label={label}
+        aria-label={t(label)}
         type="number"
         disabled={
           label.endsWith(": earned credit") ||
@@ -2531,7 +2673,7 @@ function PolicyEditor({
         max={max}
         step="0.001"
         value={val ?? ""}
-        placeholder="Not configured"
+        placeholder={t("Not configured")}
         onChange={(e) =>
           change((c) =>
             set(c, e.target.value === "" ? null : Number(e.target.value)),
@@ -2547,16 +2689,16 @@ function PolicyEditor({
     set: (copy: any, v: string) => void,
   ) => (
     <label>
-      {label}
+      {t(label)}
       <select
-        aria-label={label}
+        aria-label={t(label)}
         value={val ?? ""}
         onChange={(e) => change((c) => set(c, e.target.value))}
       >
-        <option value="">Choose explicitly</option>
+        <option value="">{t("Choose explicitly")}</option>
         {choices.map(([key, text]) => (
           <option key={key} value={key}>
-            {text}
+            {t(text)}
           </option>
         ))}
       </select>
@@ -2564,10 +2706,11 @@ function PolicyEditor({
   );
   return (
     <>
-      <h3>Attendance credits & edit permissions</h3>
+      <h3>{t("Attendance credits & edit permissions")}</h3>
       <p>
-        Choose the numerator and denominator credit for each status. These are
-        institute decisions; no values are prefilled.
+        {t(
+          "Choose the numerator and denominator credit for each status. These are institute decisions; no values are prefilled.",
+        )}
       </p>
       <div className="gridform">
         {statuses.map((status) => (
@@ -2620,15 +2763,16 @@ function PolicyEditor({
           (c, v) => (c.attendance.zeroDenominator = v),
         )}
       </div>
-      <h3>Grade bands</h3>
+      <h3>{t("Grade bands")}</h3>
       <p>
-        Enter official labels and contiguous percentage bands. The final
-        exclusive bound is 101 so a score of 100 is included.
+        {t(
+          "Enter official labels and contiguous percentage bands. The final exclusive bound is 101 so a score of 100 is included.",
+        )}
       </p>
       {p.grades?.map((g: any, i: number) => (
         <div className="gridform" key={i}>
           <label>
-            Grade label
+            {t("Grade label")}
             <input
               value={g.label ?? ""}
               onChange={(e) =>
@@ -2661,7 +2805,7 @@ function PolicyEditor({
             className="secondary"
             onClick={() => change((c) => c.grades.splice(i, 1))}
           >
-            Remove band
+            {t("Remove band")}
           </button>
         </div>
       ))}
@@ -2674,10 +2818,10 @@ function PolicyEditor({
           })
         }
       >
-        Add official grade band
+        {t("Add official grade band")}
       </button>
       <h3 style={{ marginTop: 24 }}>
-        Pass rules, missing marks & result eligibility
+        {t("Pass rules, missing marks & result eligibility")}
       </h3>
       <div className="gridform">
         {numeric(
@@ -2737,7 +2881,7 @@ function PolicyEditor({
           (c, v) => (c.rounding = v),
         )}
       </div>
-      <h3>Ranking</h3>
+      <h3>{t("Ranking")}</h3>
       <div className="gridform">
         {select(
           "Tie strategy",
@@ -2786,6 +2930,8 @@ function SchemeEditor({
   onChange: (s: string) => void;
   section: string;
 }) {
+  const { t } = useI18n();
+
   const [offerings, setOfferings] = useState<any[]>([]);
   useEffect(() => {
     void api<any[]>(`/v1/sections/${section}/subjects`)
@@ -2796,7 +2942,7 @@ function SchemeEditor({
   try {
     s = JSON.parse(value);
   } catch {
-    return <p>Correct advanced scheme data before editing the table.</p>;
+    return <p>{t("Correct advanced scheme data before editing the table.")}</p>;
   }
   if (!s?.papers) return null;
   const change = (fn: (copy: any) => void) => {
@@ -2806,24 +2952,29 @@ function SchemeEditor({
   };
   return (
     <details>
-      <summary>Configure papers and group membership</summary>
+      <summary>{t("Configure papers and group membership")}</summary>
       <p>
-        Changes remain local until saved as a draft or submitted as a reviewed
-        revision. Repeated labels are allowed. Codes identify distinct papers.
+        {t(
+          "Changes remain local until saved as a draft or submitted as a reviewed revision. Repeated labels are allowed. Codes identify distinct papers.",
+        )}
       </p>
-      <div className="tablewrap" tabIndex={0} aria-label="Scrollable records">
+      <div
+        className="tablewrap"
+        tabIndex={0}
+        aria-label={t("Scrollable records")}
+      >
         <table>
           <thead>
             <tr>
-              <th>Order</th>
-              <th>Code</th>
-              <th>Offering</th>
-              <th>Urdu label</th>
-              <th>Max marks</th>
-              <th>Type</th>
-              <th>Question pattern</th>
-              <th>Exam date</th>
-              <th>Group</th>
+              <th>{t("Order")}</th>
+              <th>{t("Code")}</th>
+              <th>{t("Offering")}</th>
+              <th>{t("Urdu label")}</th>
+              <th>{t("Max marks")}</th>
+              <th>{t("Type")}</th>
+              <th>{t("Question pattern")}</th>
+              <th>{t("Exam date")}</th>
+              <th>{t("Group")}</th>
             </tr>
           </thead>
           <tbody>
@@ -2842,7 +2993,7 @@ function SchemeEditor({
                       })
                     }
                   >
-                    ↑
+                    {t("↑")}
                   </button>
                   <button
                     className="secondary"
@@ -2856,12 +3007,12 @@ function SchemeEditor({
                       })
                     }
                   >
-                    ↓
+                    {t("↓")}
                   </button>
                 </td>
                 <td>
                   <input
-                    aria-label={`Paper ${i + 1} code`}
+                    aria-label={t(`Paper ${i + 1} code`)}
                     value={p.code}
                     onChange={(e) =>
                       change((c) => {
@@ -2877,13 +3028,13 @@ function SchemeEditor({
                 </td>
                 <td>
                   <select
-                    aria-label={`Paper ${i + 1} offering`}
+                    aria-label={t(`Paper ${i + 1} offering`)}
                     value={p.offeringId}
                     onChange={(e) =>
                       change((c) => (c.papers[i].offeringId = e.target.value))
                     }
                   >
-                    <option value="">Choose offering</option>
+                    <option value="">{t("Choose offering")}</option>
                     {offerings.map((o) => (
                       <option value={o.id} key={o.id}>
                         {o.name_ur ?? o.name_en}
@@ -2893,7 +3044,7 @@ function SchemeEditor({
                 </td>
                 <td>
                   <input
-                    aria-label={`Paper ${i + 1} label`}
+                    aria-label={t(`Paper ${i + 1} label`)}
                     dir="rtl"
                     value={p.label}
                     onChange={(e) =>
@@ -2903,7 +3054,7 @@ function SchemeEditor({
                 </td>
                 <td>
                   <input
-                    aria-label={`Paper ${i + 1} maximum`}
+                    aria-label={t(`Paper ${i + 1} maximum`)}
                     type="number"
                     min="0.01"
                     step="0.01"
@@ -2922,20 +3073,24 @@ function SchemeEditor({
                 <td>
                   <select
                     value={p.type}
-                    aria-label={`Paper ${i + 1} type`}
+                    aria-label={t(`Paper ${i + 1} type`)}
                     onChange={(e) =>
                       change((c) => (c.papers[i].type = e.target.value))
                     }
                   >
-                    {["WRITTEN", "ORAL", "PRACTICAL", "OTHER"].map((t) => (
-                      <option key={t}>{t}</option>
-                    ))}
+                    {["WRITTEN", "ORAL", "PRACTICAL", "OTHER"].map(
+                      (paperType) => (
+                        <option key={paperType} value={paperType}>
+                          {t(paperType)}
+                        </option>
+                      ),
+                    )}
                   </select>
                 </td>
                 <td>
                   <input
                     value={p.pattern ?? ""}
-                    aria-label={`Paper ${i + 1} question pattern`}
+                    aria-label={t(`Paper ${i + 1} question pattern`)}
                     onChange={(e) =>
                       change((c) => (c.papers[i].pattern = e.target.value))
                     }
@@ -2945,7 +3100,7 @@ function SchemeEditor({
                   <input
                     type="date"
                     value={p.date ?? ""}
-                    aria-label={`Paper ${i + 1} exam date`}
+                    aria-label={t(`Paper ${i + 1} exam date`)}
                     onChange={(e) =>
                       change((c) => (c.papers[i].date = e.target.value || null))
                     }
@@ -2956,7 +3111,7 @@ function SchemeEditor({
                     value={s.groups.findIndex((g: any) =>
                       g.paperCodes.includes(p.code),
                     )}
-                    aria-label={`Paper ${i + 1} group`}
+                    aria-label={t(`Paper ${i + 1} group`)}
                     onChange={(e) =>
                       change((c) => {
                         for (const g of c.groups)
@@ -2970,7 +3125,7 @@ function SchemeEditor({
                       })
                     }
                   >
-                    <option value={-1}>Unassigned</option>
+                    <option value={-1}>{t("Unassigned")}</option>
                     {s.groups.map((g: any, n: number) => (
                       <option value={n} key={n}>
                         {g.name}
@@ -2999,9 +3154,9 @@ function SchemeEditor({
           )
         }
       >
-        Add paper
+        {t("Add paper")}
       </button>
-      <h3 style={{ marginTop: 20 }}>Group maxima</h3>
+      <h3 style={{ marginTop: 20 }}>{t("Group maxima")}</h3>
       {s.groups.map((g: any, i: number) => {
         const actual = sumMarks(
           s.papers
@@ -3011,7 +3166,7 @@ function SchemeEditor({
         return (
           <div className="toolbar" key={i}>
             <label>
-              Group name
+              {t("Group name")}
               <input
                 value={g.name}
                 onChange={(e) =>
@@ -3020,7 +3175,7 @@ function SchemeEditor({
               />
             </label>
             <label>
-              Declared maximum
+              {t("Declared maximum")}
               <input
                 type="number"
                 min="0.01"
@@ -3032,7 +3187,9 @@ function SchemeEditor({
               />
             </label>
             <span className={"tag " + (actual !== g.max ? "error" : "")}>
-              Paper maxima: {actual} / {g.max}
+              {t("Paper maxima: ")}
+              {t(actual)} {t(" / ")}
+              {g.max}
             </span>
           </div>
         );
@@ -3050,12 +3207,14 @@ function SchemeEditor({
           )
         }
       >
-        Add proposed group
+        {t("Add proposed group")}
       </button>
     </details>
   );
 }
 function AttendancePermissions({ run }: { run: Common["run"] }) {
+  const { t } = useI18n();
+
   const [data, setData] = useState<any>(null),
     [days, setDays] = useState(""),
     [reason, setReason] = useState("");
@@ -3069,11 +3228,13 @@ function AttendancePermissions({ run }: { run: Common["run"] }) {
   }, []);
   return (
     <details>
-      <summary>Historical edit permissions</summary>
+      <summary>{t("Historical edit permissions")}</summary>
       <p>
-        Assigned staff can record today without an approved grading policy.
-        Historical edits require a separately approved window. Current window:{" "}
-        {data?.days === null ? "Not approved" : `${data?.days} days`}.
+        {t(
+          "Assigned staff can record today without an approved grading policy. Historical edits require a separately approved window. Current window:",
+        )}{" "}
+        {t(data?.days === null ? "Not approved" : `${data?.days} days`)}
+        {t(".")}
       </p>
       {data?.canConfigure && (
         <form
@@ -3094,7 +3255,9 @@ function AttendancePermissions({ run }: { run: Common["run"] }) {
           }}
         >
           <label>
-            Authorized backdate days (blank revokes historical permission)
+            {t(
+              "Authorized backdate days (blank revokes historical permission)",
+            )}
             <input
               type="number"
               min="0"
@@ -3104,7 +3267,7 @@ function AttendancePermissions({ run }: { run: Common["run"] }) {
             />
           </label>
           <label>
-            Approval or revocation reason
+            {t("Approval or revocation reason")}
             <input
               value={reason}
               onChange={(e) => setReason(e.target.value)}
@@ -3112,7 +3275,7 @@ function AttendancePermissions({ run }: { run: Common["run"] }) {
               required
             />
           </label>
-          <button>Record permission decision</button>
+          <button>{t("Record permission decision")}</button>
         </form>
       )}
     </details>

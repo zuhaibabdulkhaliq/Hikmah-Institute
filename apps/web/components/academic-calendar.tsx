@@ -1,4 +1,6 @@
 "use client";
+
+import { useI18n } from "./language";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@hikmah/api-client";
 import type {
@@ -21,13 +23,16 @@ const longDays = [
   "Friday",
   "Saturday",
 ];
-const labelDate = (date: string) =>
-  new Date(date + "T12:00:00Z").toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+const labelDate = (language: string, date: string) =>
+  new Date(date + "T12:00:00Z").toLocaleDateString(
+    language === "ur" ? "ur-PK" : "en-GB",
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    },
+  );
 const dayClass = (day: CalendarDate) =>
   day.source === "UNCONFIGURED"
     ? "unconfigured"
@@ -44,6 +49,8 @@ export function AcademicCalendarPage({
   today: string;
   onAttendance: (section: string) => void;
 }) {
+  const { t, language } = useI18n();
+
   const [sections, setSections] = useState<CalendarSection[]>([]);
   const [year, setYear] = useState("");
   const [program, setProgram] = useState("");
@@ -292,39 +299,41 @@ export function AcademicCalendarPage({
     <div className="academic-calendar-page">
       <section className="panel calendar-intro">
         <div>
-          <span className="eyebrow">EVERY CLASS HAS ITS OWN RHYTHM</span>
-          <h2>Plan the days that count.</h2>
+          <span className="eyebrow">{t("EVERY CLASS HAS ITS OWN RHYTHM")}</span>
+          <h2>{t("Plan the days that count.")}</h2>
           <p>
-            Set any combination of teaching weekdays for each program, level and
-            section. Add holidays, vacations and extra classes without losing
-            your weekly schedule.
+            {t(
+              "Set any combination of teaching weekdays for each program, level and section. Add holidays, vacations and extra classes without losing your weekly schedule.",
+            )}
           </p>
         </div>
         <div className="calendar-intro-badge">
-          <strong>0–7</strong>
-          <span>teaching days per week</span>
+          <strong>{t("0–7")}</strong>
+          <span>{t("teaching days per week")}</span>
         </div>
       </section>
       {error && (
         <p role="alert" className="notice error">
-          {error}
+          {t(error)}
         </p>
       )}
       {message && (
         <p role="status" className="notice success">
-          {message}
+          {t(message)}
         </p>
       )}
       <section className="panel">
         <div className="panelhead">
-          <h2>Choose your classes</h2>
-          <span className="tag">{selected.length} selected</span>
+          <h2>{t("Choose your classes")}</h2>
+          <span className="tag">
+            {t(selected.length)} {t(" selected")}
+          </span>
         </div>
         <div className="calendar-filters">
           <label>
-            Academic year
+            {t("Academic year")}
             <select
-              aria-label="Academic year"
+              aria-label={t("Academic year")}
               value={year}
               onChange={(e) => {
                 setYear(e.target.value);
@@ -334,22 +343,23 @@ export function AcademicCalendarPage({
             >
               {unique(sections, "academic_year_id").map((s) => (
                 <option key={s.academic_year_id} value={s.academic_year_id}>
-                  {s.year_label} · {s.year_state}
+                  {s.year_label} {t(" · ")}
+                  {t(s.year_state)}
                 </option>
               ))}
             </select>
           </label>
           <label>
-            Program
+            {t("Program")}
             <select
-              aria-label="Program"
+              aria-label={t("Program")}
               value={program}
               onChange={(e) => {
                 setProgram(e.target.value);
                 setLevel("");
               }}
             >
-              <option value="">All programs</option>
+              <option value="">{t("All programs")}</option>
               {unique(yearSections, "program_id").map((s) => (
                 <option key={s.program_id} value={s.program_id}>
                   {s.program_name}
@@ -358,13 +368,13 @@ export function AcademicCalendarPage({
             </select>
           </label>
           <label>
-            Class level
+            {t("Class level")}
             <select
-              aria-label="Class level"
+              aria-label={t("Class level")}
               value={level}
               onChange={(e) => setLevel(e.target.value)}
             >
-              <option value="">All levels</option>
+              <option value="">{t("All levels")}</option>
               {unique(
                 yearSections.filter(
                   (s) => !program || s.program_id === program,
@@ -379,9 +389,9 @@ export function AcademicCalendarPage({
           </label>
         </div>
         <p className="tiny">
-          Filters select the matching sections below. Uncheck any section that
-          should keep a different schedule. New sections are configured
-          explicitly.
+          {t(
+            "Filters select the matching sections below. Uncheck any section that should keep a different schedule. New sections are configured explicitly.",
+          )}
         </p>
         {!!filtered.length && (
           <div className="toolbar">
@@ -391,14 +401,14 @@ export function AcademicCalendarPage({
               disabled={!editable}
               onClick={() => setSelected(filtered.map((s) => s.id))}
             >
-              Select all shown
+              {t("Select all shown")}
             </button>
             <button
               type="button"
               className="secondary"
               onClick={() => setSelected([])}
             >
-              Clear selection
+              {t("Clear selection")}
             </button>
           </div>
         )}
@@ -427,19 +437,23 @@ export function AcademicCalendarPage({
                 />
                 <span>
                   <strong>
-                    {s.name} · {s.code}
+                    {s.name} {t(" · ")}
+                    {s.code}
                   </strong>
                   <small>
-                    {s.program_name} · {s.level_name}
+                    {s.program_name} {t(" · ")}
+                    {s.level_name}
                   </small>
                   <small>
-                    {pattern
-                      ? pattern.weekdays.length
-                        ? pattern.weekdays.map((d) => weekdays[d]).join(" · ")
-                        : "No teaching weekdays"
-                      : s.configured_days
-                        ? "Existing calendar · weekly schedule not saved"
-                        : "Calendar not configured"}
+                    {t(
+                      pattern
+                        ? pattern.weekdays.length
+                          ? pattern.weekdays.map((d) => weekdays[d]).join(" · ")
+                          : "No teaching weekdays"
+                        : s.configured_days
+                          ? "Existing calendar · weekly schedule not saved"
+                          : "Calendar not configured",
+                    )}
                   </small>
                 </span>
               </label>
@@ -448,15 +462,18 @@ export function AcademicCalendarPage({
         </div>
         {!filtered.length && (
           <p>
-            No sections match these filters. Create sections in Academic setup
-            first.
+            {t(
+              "No sections match these filters. Create sections in Academic setup first.",
+            )}
           </p>
         )}
         {yearInfo && !editable && (
           <p className="notice">
-            This academic year is {yearInfo.year_state.toLowerCase()}. Its
-            calendar is available for viewing; an administrator must reopen the
-            year before editing.
+            {t("This academic year is ")}
+            {t(yearInfo.year_state.toLowerCase())}
+            {t(
+              ". Its calendar is available for viewing; an administrator must reopen the year before editing.",
+            )}
           </p>
         )}
       </section>
@@ -464,26 +481,27 @@ export function AcademicCalendarPage({
         <div className="calendar-workspace">
           <section className="panel calendar-month-panel">
             <div className="panelhead">
-              <h2>Calendar at a glance</h2>
+              <h2>{t("Calendar at a glance")}</h2>
               {viewed && (
                 <button
                   className="secondary"
                   onClick={() => onAttendance(viewed.id)}
                 >
-                  Take attendance
+                  {t("Take attendance")}
                 </button>
               )}
             </div>
             <label>
-              View section
+              {t("View section")}
               <select
-                aria-label="View section"
+                aria-label={t("View section")}
                 value={viewSection}
                 onChange={(e) => setViewSection(e.target.value)}
               >
                 {filtered.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.name} · {s.code}
+                    {s.name} {t(" · ")}
+                    {s.code}
                   </option>
                 ))}
               </select>
@@ -491,14 +509,14 @@ export function AcademicCalendarPage({
             <div className="calendar-month-controls">
               <button
                 className="secondary"
-                aria-label="Previous calendar month"
+                aria-label={t("Previous calendar month")}
                 disabled={!viewed || month <= viewed.year_start.slice(0, 7)}
                 onClick={() => moveMonth(-1)}
               >
-                ←
+                {t("←")}
               </button>
               <label>
-                Month
+                {t("Month")}
                 <input
                   type="month"
                   value={month}
@@ -511,27 +529,27 @@ export function AcademicCalendarPage({
               </label>
               <button
                 className="secondary"
-                aria-label="Next calendar month"
+                aria-label={t("Next calendar month")}
                 disabled={!viewed || month >= viewed.year_end.slice(0, 7)}
                 onClick={() => moveMonth(1)}
               >
-                →
+                {t("→")}
               </button>
             </div>
             <div className="calendar-legend">
-              <span className="teaching">Academic day</span>
-              <span className="holiday">Day off / holiday</span>
-              <span className="no-attendance">No attendance</span>
-              <span className="unconfigured">Not configured</span>
+              <span className="teaching">{t("Academic day")}</span>
+              <span className="holiday">{t("Day off / holiday")}</span>
+              <span className="no-attendance">{t("No attendance")}</span>
+              <span className="unconfigured">{t("Not configured")}</span>
             </div>
-            {loading && <p role="status">Loading calendar…</p>}
+            {loading && <p role="status">{t("Loading calendar…")}</p>}
             <div
               className="calendar-month-grid"
-              aria-label="Monthly academic calendar"
+              aria-label={t("Monthly academic calendar")}
             >
               {weekdays.map((d) => (
                 <span key={d} className="calendar-week-heading">
-                  {d}
+                  {t(d)}
                 </span>
               ))}
               {monthDates.map((date, i) => {
@@ -543,25 +561,27 @@ export function AcademicCalendarPage({
                     type="button"
                     disabled={!day || !editable || loading}
                     className={`calendar-day ${day ? dayClass(day) : "outside-year"} ${date === today ? "today" : ""}`}
-                    aria-label={`${labelDate(date)}: ${day?.note ?? "Outside academic year"}`}
-                    title={
+                    aria-label={t(
+                      `${labelDate(language, date)}: ${day?.note ?? "Outside academic year"}`,
+                    )}
+                    title={t(
                       day
                         ? `${day.note}${day.sheetState ? ` · ${day.sheetState}` : ""}`
-                        : "Outside academic year"
-                    }
+                        : "Outside academic year",
+                    )}
                     onClick={() => day && selectDate(day)}
                   >
-                    <strong>{Number(date.slice(8))}</strong>
+                    <strong>{t(Number(date.slice(8)))}</strong>
                     {day?.source === "EXCEPTION" && (
                       <span
                         className="calendar-exception-dot"
-                        aria-label="Exception"
+                        aria-label={t("Exception")}
                       >
-                        •
+                        {t("•")}
                       </span>
                     )}
                     {day?.sheetState && (
-                      <small aria-label="Attendance saved">✓</small>
+                      <small aria-label={t("Attendance saved")}>{t("✓")}</small>
                     )}
                   </button>
                 );
@@ -569,30 +589,33 @@ export function AcademicCalendarPage({
             </div>
             {calendar && (
               <p className="tiny">
-                {calendar.days.filter((d) => d.countsForAttendance).length}{" "}
-                academic days ·{" "}
-                {
+                {t(calendar.days.filter((d) => d.countsForAttendance).length)}{" "}
+                {t("academic days ·")}{" "}
+                {t(
                   calendar.days.filter((d) => d.source === "UNCONFIGURED")
-                    .length
-                }{" "}
-                unconfigured dates in this month. Click a date to prepare an
-                exception; the selected class checkboxes control where it is
-                applied.
+                    .length,
+                )}{" "}
+                {t(
+                  "unconfigured dates in this month. Click a date to prepare an exception; the selected class checkboxes control where it is applied.",
+                )}
               </p>
             )}
             {!!calendar?.patterns.length && (
               <details>
-                <summary>Saved weekly schedules for this month</summary>
+                <summary>{t("Saved weekly schedules for this month")}</summary>
                 {calendar.patterns.map((p) => (
                   <div className="calendar-saved-rule" key={p.id}>
                     <span>
                       <strong>
-                        {p.weekdays.length
-                          ? p.weekdays.map((d) => weekdays[d]).join(", ")
-                          : "No teaching weekdays"}
+                        {t(
+                          p.weekdays.length
+                            ? p.weekdays.map((d) => weekdays[d]).join(", ")
+                            : "No teaching weekdays",
+                        )}
                       </strong>
                       <small>
-                        {labelDate(p.starts_on)} – {labelDate(p.ends_on)}
+                        {t(labelDate(language, p.starts_on))} {t(" – ")}
+                        {t(labelDate(language, p.ends_on))}
                       </small>
                     </span>
                     <button
@@ -605,7 +628,7 @@ export function AcademicCalendarPage({
                         setDays(p.weekdays);
                       }}
                     >
-                      Edit schedule
+                      {t("Edit schedule")}
                     </button>
                   </div>
                 ))}
@@ -613,27 +636,29 @@ export function AcademicCalendarPage({
             )}
             {!!calendar?.days.some((d) => d.source === "EXCEPTION") && (
               <details>
-                <summary>Holidays & exceptions this month</summary>
+                <summary>{t("Holidays & exceptions this month")}</summary>
                 <div className="calendar-exception-list">
                   {calendar.days
                     .filter((d) => d.source === "EXCEPTION")
                     .map((d) => (
                       <div className="calendar-saved-rule" key={d.date}>
                         <span>
-                          <strong>{d.note}</strong>
-                          <small>{labelDate(d.date)}</small>
+                          <strong>{t(d.note)}</strong>
+                          <small>{t(labelDate(language, d.date))}</small>
                         </span>
                         <button
                           className="secondary"
                           disabled={!editable}
-                          aria-label={`Restore weekly schedule for ${d.date}`}
+                          aria-label={t(
+                            `Restore weekly schedule for ${d.date}`,
+                          )}
                           onClick={() => {
                             setKind("RESTORE");
                             setFrom(d.date);
                             setThrough(d.date);
                           }}
                         >
-                          Restore
+                          {t("Restore")}
                         </button>
                       </div>
                     ))}
@@ -643,13 +668,15 @@ export function AcademicCalendarPage({
           </section>
           <section className="panel calendar-editor">
             <div className="panelhead">
-              <h2>Edit selected calendars</h2>
-              <span className="tag">{selected.length} section(s)</span>
+              <h2>{t("Edit selected calendars")}</h2>
+              <span className="tag">
+                {t(selected.length)} {t(" section(s)")}
+              </span>
             </div>
             <div
               className="calendar-modes"
               role="group"
-              aria-label="Calendar change type"
+              aria-label={t("Calendar change type")}
             >
               {(
                 [
@@ -665,7 +692,7 @@ export function AcademicCalendarPage({
                   className={kind === value ? "active" : "secondary"}
                   onClick={() => setKind(value)}
                 >
-                  {label}
+                  {t(label)}
                 </button>
               ))}
             </div>
@@ -677,15 +704,17 @@ export function AcademicCalendarPage({
             >
               <fieldset disabled={!editable || busy}>
                 <legend>
-                  {kind === "WEEKLY"
-                    ? "Choose the teaching week"
-                    : kind === "EXCEPTION"
-                      ? "One date or a whole vacation"
-                      : "Remove exceptions in this range"}
+                  {t(
+                    kind === "WEEKLY"
+                      ? "Choose the teaching week"
+                      : kind === "EXCEPTION"
+                        ? "One date or a whole vacation"
+                        : "Remove exceptions in this range",
+                  )}
                 </legend>
                 <div className="calendar-date-range">
                   <label>
-                    Effective from
+                    {t("Effective from")}
                     <input
                       type="date"
                       value={from}
@@ -696,7 +725,7 @@ export function AcademicCalendarPage({
                     />
                   </label>
                   <label>
-                    Through
+                    {t("Through")}
                     <input
                       type="date"
                       value={through}
@@ -710,9 +739,9 @@ export function AcademicCalendarPage({
                 {kind === "WEEKLY" && (
                   <>
                     <label>
-                      Copy a saved schedule
+                      {t("Copy a saved schedule")}
                       <select
-                        aria-label="Copy a saved schedule"
+                        aria-label={t("Copy a saved schedule")}
                         defaultValue=""
                         onChange={(e) => {
                           const [sid, pid] = e.target.value.split(":");
@@ -723,14 +752,24 @@ export function AcademicCalendarPage({
                           e.target.value = "";
                         }}
                       >
-                        <option value="">Choose a schedule to copy…</option>
+                        <option value="">
+                          {t("Choose a schedule to copy…")}
+                        </option>
                         {sections.flatMap((s) =>
                           s.patterns.map((p) => (
                             <option key={p.id} value={`${s.id}:${p.id}`}>
-                              {s.program_name} · {s.level_name} · {s.code}:{" "}
-                              {p.weekdays.map((d) => weekdays[d]).join(", ") ||
-                                "Closed"}{" "}
-                              ({p.starts_on} – {p.ends_on})
+                              {s.program_name} {t(" · ")}
+                              {s.level_name} {t(" · ")}
+                              {s.code}
+                              {t(":")}{" "}
+                              {t(
+                                p.weekdays.map((d) => weekdays[d]).join(", ") ||
+                                  "Closed",
+                              )}{" "}
+                              {t("(")}
+                              {t(p.starts_on)} {t(" – ")}
+                              {t(p.ends_on)}
+                              {t(")")}
                             </option>
                           )),
                         )}
@@ -739,7 +778,7 @@ export function AcademicCalendarPage({
                     <div
                       className="calendar-weekdays"
                       role="group"
-                      aria-label="Teaching weekdays"
+                      aria-label={t("Teaching weekdays")}
                     >
                       {longDays.map((name, i) => (
                         <label
@@ -748,7 +787,7 @@ export function AcademicCalendarPage({
                         >
                           <input
                             type="checkbox"
-                            aria-label={name}
+                            aria-label={t(name)}
                             checked={days.includes(i)}
                             onChange={(e) =>
                               setDays((values) =>
@@ -758,7 +797,7 @@ export function AcademicCalendarPage({
                               )
                             }
                           />
-                          <span>{weekdays[i]}</span>
+                          <span>{t(weekdays[i])}</span>
                         </label>
                       ))}
                     </div>
@@ -768,21 +807,23 @@ export function AcademicCalendarPage({
                         className="secondary"
                         onClick={() => setDays([0, 1, 2, 3, 4, 5, 6])}
                       >
-                        All seven days
+                        {t("All seven days")}
                       </button>
                       <button
                         type="button"
                         className="secondary"
                         onClick={() => setDays([])}
                       >
-                        Clear weekdays
+                        {t("Clear weekdays")}
                       </button>
-                      <span className="tag">{days.length} days / week</span>
+                      <span className="tag">
+                        {t(days.length)} {t(" days / week")}
+                      </span>
                     </div>
                     <p className="tiny">
-                      The schedule changes only this date range. Saved holidays
-                      and extra days stay in place. Zero selected weekdays
-                      closes the range except explicit extra teaching days.
+                      {t(
+                        "The schedule changes only this date range. Saved holidays and extra days stay in place. Zero selected weekdays closes the range except explicit extra teaching days.",
+                      )}
                     </p>
                     {!days.length && (
                       <label className="check-label">
@@ -791,8 +832,9 @@ export function AcademicCalendarPage({
                           checked={confirmClosed}
                           onChange={(e) => setConfirmClosed(e.target.checked)}
                         />
-                        No ordinary teaching days in this range; keep only
-                        explicit extra teaching days.
+                        {t(
+                          "No ordinary teaching days in this range; keep only explicit extra teaching days.",
+                        )}
                       </label>
                     )}
                   </>
@@ -800,56 +842,59 @@ export function AcademicCalendarPage({
                 {kind === "EXCEPTION" && (
                   <>
                     <label>
-                      Day type
+                      {t("Day type")}
                       <select
-                        aria-label="Day type"
+                        aria-label={t("Day type")}
                         value={dayType}
                         onChange={(e) =>
                           setDayType(e.target.value as typeof dayType)
                         }
                       >
                         <option value="HOLIDAY">
-                          Holiday / closed — no attendance
+                          {t("Holiday / closed — no attendance")}
                         </option>
                         <option value="TEACHING">
-                          Extra teaching day — attendance counts
+                          {t("Extra teaching day — attendance counts")}
                         </option>
                         <option value="NO_ATTENDANCE">
-                          Teaching / event — attendance not counted
+                          {t("Teaching / event — attendance not counted")}
                         </option>
                       </select>
                     </label>
                     <label>
-                      Holiday or exception name
+                      {t("Holiday or exception name")}
                       <input
                         value={note}
                         maxLength={200}
                         required
-                        placeholder="For example, winter vacation or make-up class"
+                        placeholder={t(
+                          "For example, winter vacation or make-up class",
+                        )}
                         onChange={(e) => setNote(e.target.value)}
                       />
                     </label>
                     <p className="tiny">
-                      The exception takes priority over the weekly schedule for
-                      every date in this range.
+                      {t(
+                        "The exception takes priority over the weekly schedule for every date in this range.",
+                      )}
                     </p>
                   </>
                 )}
                 {kind === "RESTORE" && (
                   <p>
-                    Remove holiday or extra-day exceptions in this range and
-                    return to the saved weekly schedule. A weekly schedule must
-                    exist for each exception being restored.
+                    {t(
+                      "Remove holiday or extra-day exceptions in this range and return to the saved weekly schedule. A weekly schedule must exist for each exception being restored.",
+                    )}
                   </p>
                 )}
                 <label>
-                  Reason for change
+                  {t("Reason for change")}
                   <input
                     value={reason}
                     required
                     minLength={5}
                     maxLength={1000}
-                    placeholder="For example, revised Shaam timetable"
+                    placeholder={t("For example, revised Shaam timetable")}
                     onChange={(e) => setReason(e.target.value)}
                   />
                 </label>
@@ -857,13 +902,14 @@ export function AcademicCalendarPage({
                   className="login-submit"
                   disabled={!selected.length || busy}
                 >
-                  {busy ? "Working…" : "Preview changes"}
+                  {t(busy ? "Working…" : "Preview changes")}
                 </button>
               </fieldset>
             </form>
             <p className="tiny">
-              Calendar changes affect live attendance totals. Student attendance
-              entries and previously published reports are retained.
+              {t(
+                "Calendar changes affect live attendance totals. Student attendance entries and previously published reports are retained.",
+              )}
             </p>
           </section>
         </div>
@@ -871,19 +917,19 @@ export function AcademicCalendarPage({
       {currentPreview && (
         <section
           className="panel calendar-preview"
-          aria-label="Calendar change preview"
+          aria-label={t("Calendar change preview")}
         >
           <div className="panelhead">
-            <h2>Review before applying</h2>
+            <h2>{t("Review before applying")}</h2>
             <span className="tag">
-              {labelDate(currentPreview.data.from)} –{" "}
-              {labelDate(currentPreview.data.through)}
+              {t(labelDate(language, currentPreview.data.from))} {t(" –")}{" "}
+              {t(labelDate(language, currentPreview.data.through))}
             </span>
           </div>
           <p>
-            Planned academic days cover the selected range, including future
-            dates. Attendance percentages still count only eligible days through
-            today.
+            {t(
+              "Planned academic days cover the selected range, including future dates. Attendance percentages still count only eligible days through today.",
+            )}
           </p>
           <div className="tablewrap" tabIndex={0}>
             <table>
@@ -897,8 +943,8 @@ export function AcademicCalendarPage({
                     "Days removed",
                     "Exceptions kept",
                     "Recorded dates affected",
-                  ].map((t) => (
-                    <th key={t}>{t}</th>
+                  ].map((heading) => (
+                    <th key={heading}>{t(heading)}</th>
                   ))}
                 </tr>
               </thead>
@@ -906,12 +952,12 @@ export function AcademicCalendarPage({
                 {currentPreview.data.sections.map((s) => (
                   <tr key={s.id}>
                     <td>{s.name}</td>
-                    <td>{s.academicDays}</td>
-                    <td>{s.changedDates}</td>
-                    <td>{s.addedAcademicDays}</td>
-                    <td>{s.removedAcademicDays}</td>
-                    <td>{s.preservedExceptions}</td>
-                    <td>{s.recordedDatesAffected}</td>
+                    <td>{t(s.academicDays)}</td>
+                    <td>{t(s.changedDates)}</td>
+                    <td>{t(s.addedAcademicDays)}</td>
+                    <td>{t(s.removedAcademicDays)}</td>
+                    <td>{t(s.preservedExceptions)}</td>
+                    <td>{t(s.recordedDatesAffected)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -924,18 +970,22 @@ export function AcademicCalendarPage({
                 checked={ack}
                 onChange={(e) => setAck(e.target.checked)}
               />
-              I reviewed the {recorded} date(s) with saved attendance whose
-              counting status will change. Live totals may change; existing
-              published reports remain unchanged.
+              {t("I reviewed the ")}
+              {t(recorded)}{" "}
+              {t(
+                " date(s) with saved attendance whose counting status will change. Live totals may change; existing published reports remain unchanged.",
+              )}
             </label>
           )}
           <button
             disabled={busy || (recorded > 0 && !ack)}
             onClick={() => void apply()}
           >
-            {busy
-              ? "Applying…"
-              : `Apply to ${currentPreview.data.sections.length} section(s)`}
+            {t(
+              busy
+                ? "Applying…"
+                : `Apply to ${currentPreview.data.sections.length} section(s)`,
+            )}
           </button>
         </section>
       )}

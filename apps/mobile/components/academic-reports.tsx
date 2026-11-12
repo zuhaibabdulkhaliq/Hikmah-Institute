@@ -1,5 +1,7 @@
+import { serverURL } from "./connection";
+import { Text, LocalizedLabel, useI18n } from "./language";
 import { useEffect, useState } from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
+import { View, Pressable, ScrollView, StyleSheet } from "react-native";
 import type { createClient } from "@hikmah/api-client";
 import { colors, radii } from "@hikmah/ui-tokens";
 import { File, Paths } from "expo-file-system";
@@ -7,10 +9,10 @@ import * as Sharing from "expo-sharing";
 import * as SecureStore from "expo-secure-store";
 type Request = ReturnType<typeof createClient>;
 type Run = (fn: () => Promise<void>) => Promise<void>;
-const base = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001";
+
 async function share(path: string) {
   const token = await SecureStore.getItemAsync("hikmah-session"),
-    r = await fetch(base + path, {
+    r = await fetch((await serverURL()) + path, {
       headers: { Authorization: `Bearer ${token}` },
     });
   if (!r.ok) throw new Error("Report download denied");
@@ -32,7 +34,9 @@ const action = (label: string, fn: () => void, selected = false) => (
     onPress={fn}
     style={[styles.button, selected && styles.selected]}
   >
-    <Text style={{ color: selected ? "white" : colors.primary }}>{label}</Text>
+    <LocalizedLabel style={{ color: selected ? "white" : colors.primary }}>
+      {label}
+    </LocalizedLabel>
   </Pressable>
 );
 export function NativeAttendanceTotals({
@@ -46,6 +50,8 @@ export function NativeAttendanceTotals({
   run: Run;
   refreshKey?: number;
 }) {
+  const { t } = useI18n();
+
   const [open, setOpen] = useState(false);
   const [period, setPeriod] = useState("YEAR"),
     [cycle, setCycle] = useState(""),
@@ -74,10 +80,11 @@ export function NativeAttendanceTotals({
   }, [section, period, cycle, refreshKey]);
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Attendance totals</Text>
+      <Text style={styles.title}>{t("Attendance totals")}</Text>
       <Text style={styles.note}>
-        Present 1 · Half 0.5 · Absent 0 · Leave excluded. Only submitted
-        academic days count.
+        {t(
+          "Present 1 · Half 0.5 · Absent 0 · Leave excluded. Only submitted academic days count.",
+        )}
       </Text>
       {action(open ? "Hide attendance totals" : "Show attendance totals", () =>
         setOpen(!open),
@@ -105,13 +112,20 @@ export function NativeAttendanceTotals({
             <View key={s.enrollmentId} style={styles.record}>
               <Text style={styles.title}>{s.name}</Text>
               <Text style={styles.note}>
-                P {s.present} · A {s.absent} · Half {s.half} · Leave {s.leave}
+                {t("P ")}
+                {s.present} {t(" · A ")}
+                {s.absent} {t(" · Half ")}
+                {s.half} {t(" · Leave ")}
+                {s.leave}
               </Text>
               <Text style={styles.note}>
-                {s.academicDays} academic days · {s.unmarked} unmarked ·{" "}
-                {s.displayPercent === null
-                  ? "Incomplete / N/A"
-                  : s.displayPercent + "%"}
+                {s.academicDays} {t(" academic days · ")}
+                {s.unmarked} {t(" unmarked ·")}{" "}
+                {t(
+                  s.displayPercent === null
+                    ? "Incomplete / N/A"
+                    : s.displayPercent + "%",
+                )}
               </Text>
             </View>
           ))}
@@ -129,6 +143,8 @@ export function NativePerformance({
   request: Request;
   run: Run;
 }) {
+  const { t } = useI18n();
+
   const [roster, setRoster] = useState<any[]>([]),
     [student, setStudent] = useState(""),
     [data, setData] = useState<any>(null),
@@ -159,7 +175,7 @@ export function NativePerformance({
   });
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Student performance & history</Text>
+      <Text style={styles.title}>{t("Student performance & history")}</Text>
       <ScrollView horizontal>
         {roster.map((s) =>
           action(
@@ -193,27 +209,40 @@ export function NativePerformance({
         ?.filter((y: any) => !year || y.yearId === year)
         .map((y: any) => (
           <View style={styles.record} key={y.yearId}>
-            <Text style={styles.title}>Whole year · {y.year}</Text>
+            <Text style={styles.title}>
+              {t("Whole year · ")}
+              {y.year}
+            </Text>
             <Text style={styles.note}>
-              P {y.attendance.present} · A {y.attendance.absent} · Half{" "}
-              {y.attendance.half} · Leave {y.attendance.leave} ·{" "}
-              {y.attendance.displayPercent ?? "Incomplete / N/A"}%
+              {t("P ")}
+              {y.attendance.present} {t(" · A ")}
+              {y.attendance.absent} {t(" · Half")} {y.attendance.half}{" "}
+              {t(" · Leave ")}
+              {y.attendance.leave} {t(" ·")}{" "}
+              {t(y.attendance.displayPercent ?? "Incomplete / N/A")}
+              {t("%")}
             </Text>
           </View>
         ))}
       {years.map((y: any) => (
         <View key={y.enrollmentId} style={styles.record}>
           <Text style={styles.title}>
-            {y.year} · {y.section}
+            {y.year} {t(" · ")}
+            {y.section}
           </Text>
           <Text style={styles.note}>
-            {y.program} · {y.level}
+            {y.program} {t(" · ")}
+            {y.level}
           </Text>
           {y.attendance && (
             <Text style={styles.note}>
-              P {y.attendance.present} · A {y.attendance.absent} · Half{" "}
-              {y.attendance.half} · Leave {y.attendance.leave} · Attendance{" "}
-              {y.attendance.displayPercent ?? "Incomplete"}%
+              {t("P ")}
+              {y.attendance.present} {t(" · A ")}
+              {y.attendance.absent} {t(" · Half")} {y.attendance.half}{" "}
+              {t(" · Leave ")}
+              {y.attendance.leave} {t(" · Attendance")}{" "}
+              {t(y.attendance.displayPercent ?? "Incomplete")}
+              {t("%")}
             </Text>
           )}
           <ScrollView horizontal>
@@ -228,15 +257,20 @@ export function NativePerformance({
               <View key={s.cycleId} style={styles.record}>
                 <Text style={styles.title}>{s.title}</Text>
                 <Text style={styles.note}>
-                  {s.result.total} / {s.result.possible} ·{" "}
-                  {s.result.percent === null
-                    ? "Pending"
-                    : Number(s.result.percent).toFixed(1) + "%"}{" "}
-                  · {s.official ? "Published" : "Draft"}
+                  {s.result.total} {t(" / ")}
+                  {s.result.possible} {t(" ·")}{" "}
+                  {t(
+                    s.result.percent === null
+                      ? "Pending"
+                      : Number(s.result.percent).toFixed(1) + "%",
+                  )}{" "}
+                  {t("· ")}
+                  {t(s.official ? "Published" : "Draft")}
                 </Text>
                 <Text style={styles.note}>
-                  Position {s.result.rank ?? "—"} ·{" "}
-                  {s.positionReason ?? "Eligible"}
+                  {t("Position ")}
+                  {s.result.rank ?? "—"} {t(" ·")}{" "}
+                  {t(s.positionReason ?? "Eligible")}
                 </Text>
               </View>
             ))}

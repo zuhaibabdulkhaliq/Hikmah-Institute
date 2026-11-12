@@ -1,3 +1,6 @@
+"use client";
+
+import { LanguageSwitch, useI18n } from "./language";
 import type { ReactNode } from "react";
 import Image from "next/image";
 
@@ -50,6 +53,8 @@ export function Brand({
 }: {
   subtitle?: string;
 }) {
+  const { t } = useI18n();
+
   return (
     <div className="brand">
       <span className="brand-mark" aria-hidden="true">
@@ -79,53 +84,60 @@ export function Brand({
         )}
       </span>
       <div className="brand-name">
-        Hikmah Institute<span>{subtitle}</span>
+        {t("Hikmah Institute")}
+        <span>{t(subtitle)}</span>
       </div>
     </div>
   );
 }
 
 export function AuthFrame({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
+
   return (
     <div className="auth-shell">
-      <section className="auth-story" aria-label="Hikmah Institute">
-        <Brand subtitle="LEARNING WITH PURPOSE" />
+      <section className="auth-story" aria-label={t("Hikmah Institute")}>
+        <Brand subtitle={t("LEARNING WITH PURPOSE")} />
         <div className="auth-story-copy">
-          <span className="story-kicker">KNOWLEDGE. CARE. CLARITY.</span>
+          <span className="story-kicker">{t("KNOWLEDGE. CARE. CLARITY.")}</span>
           <h1>
-            A thoughtful space
+            {t("A thoughtful space")}
             <br />
-            for every day
+            {t("for every day")}
             <br />
-            of learning.
+            {t("of learning.")}
           </h1>
           <p>
-            Your institute, connected. A calmer way to care for attendance,
-            academics and everything in between.
+            {t(
+              "Your institute, connected. A calmer way to care for attendance, academics and everything in between.",
+            )}
           </p>
           <div className="glass-art" aria-hidden="true">
             <div className="art-arch art-arch-back" />
             <div className="art-arch art-arch-front">
-              <span>علم</span>
+              <span>{t("علم")}</span>
             </div>
             <div className="art-caption">
-              <span className="art-dot" /> Learning with purpose
+              <span className="art-dot" /> {t(" Learning with purpose")}
             </div>
           </div>
         </div>
         <div className="story-footer">
-          <span>HIKMAH INSTITUTE</span>
+          <span>{t("HIKMAH INSTITUTE")}</span>
           <span lang="ur" dir="rtl">
-            علم، عمل، حکمت
+            {t("علم، عمل، حکمت")}
           </span>
         </div>
       </section>
       <section className="auth-content">
+        <LanguageSwitch />
         <div className="auth-mobile-brand">
           <Brand />
         </div>
         <div className="login">{children}</div>
-        <p className="auth-footer">Hikmah Institute · Academic management</p>
+        <p className="auth-footer">
+          {t("Hikmah Institute · Academic management")}
+        </p>
       </section>
     </div>
   );

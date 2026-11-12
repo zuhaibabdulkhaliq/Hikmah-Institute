@@ -1,5 +1,7 @@
 # Deployment and recovery
 
+For the recommended managed PostgreSQL + Caddy HTTPS setup, follow [Hosting](HOSTING.md). The release/account and phone guides are [Institute release](INSTITUTE_RELEASE.md) and [Mobile testing](MOBILE_TESTING.md).
+
 ## Build and staging
 
 Use separate databases, secrets, domains and backup storage for development, staging and production. Do not seed demo identities in production.

@@ -1,14 +1,25 @@
 import {
+  api,
+  configureServer,
+  initialServer,
+  serverURL,
+} from "../components/connection";
+import { AccountSettings } from "../components/account-settings";
+import {
+  Text,
+  TextInput,
+  LanguageSwitch,
+  useI18n,
+} from "../components/language";
+import {
   NativeAttendanceTotals,
   NativePerformance,
 } from "../components/academic-reports";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ComponentRef } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radii } from "@hikmah/ui-tokens";
 import {
   View,
-  Text,
-  TextInput,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,20 +30,21 @@ import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import * as SecureStore from "expo-secure-store";
 import {
-  createClient,
   ApiError,
   type Identity,
   type Section,
   type Sheet,
 } from "@hikmah/api-client";
-const base = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001";
-const api = createClient(base, () =>
-  SecureStore.getItemAsync("hikmah-session"),
-);
 const statuses = ["PRESENT", "ABSENT", "HALF", "LEAVE"];
 export default function Home() {
+  const { t, language } = useI18n();
+
   const insets = useSafeAreaInsets();
   const accessVersion = useRef("");
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+
+  const [server, setServer] = useState(initialServer);
+  const [passwordChanged, setPasswordChanged] = useState(false);
   const [me, setMe] = useState<Identity | null>(null),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
@@ -52,6 +64,9 @@ export default function Home() {
     [runs, setRuns] = useState<any[]>([]),
     [history, setHistory] = useState<any[]>([]),
     [reason, setReason] = useState("");
+  useEffect(() => {
+    if (error) scroll.current?.scrollTo({ y: 0, animated: true });
+  }, [error]);
   const canAttend =
     !!me && (me.roles.includes("ADMIN") || me.attendanceSections.length > 0);
   const canManage =
@@ -120,6 +135,9 @@ export default function Home() {
     }
   }
   useEffect(() => {
+    void serverURL()
+      .then(setServer)
+      .catch(() => {});
     const subscription = AppState.addEventListener("change", (state) => {
       if (state === "active")
         void SecureStore.getItemAsync("hikmah-session").then((t) => {
@@ -165,13 +183,14 @@ export default function Home() {
           fontWeight: "600",
         }}
       >
-        {title}
+        {t(title)}
       </Text>
     </Pressable>
   );
   return (
     <ScrollView
-      style={styles.screen}
+      ref={scroll}
+      style={[styles.screen, { direction: language === "ur" ? "rtl" : "ltr" }]}
       contentContainerStyle={{
         padding: 22,
         paddingTop: insets.top + 24,
@@ -180,35 +199,55 @@ export default function Home() {
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
     >
+      <LanguageSwitch />
       <View style={styles.brandMark}>
-        <Text style={styles.brandGlyph}>علم</Text>
+        <Text style={styles.brandGlyph}>{t("علم")}</Text>
       </View>
-      <Text style={styles.overline}>HIKMAH INSTITUTE</Text>
+      <Text style={styles.overline}>{t("HIKMAH INSTITUTE")}</Text>
       <Text style={styles.heading}>
-        {me ? "Your class, at a glance" : "Welcome back"}
+        {t(me ? "Your class, at a glance" : "Welcome back")}
       </Text>
       <Text style={styles.subtitle}>
         {me
-          ? `${me.name} · ${ameer ? "Class Ameer" : canManage ? "Mushrif / administrator" : "Subject teacher"}`
-          : "Sign in to your staff workspace"}
+          ? `${me.name} · ${t(ameer ? "Class Ameer" : canManage ? "Mushrif / administrator" : "Subject teacher")}`
+          : t("Sign in to your staff workspace")}
       </Text>
       {busy && (
         <ActivityIndicator
           color={colors.primary}
-          accessibilityLabel="Working"
+          accessibilityLabel={t("Working")}
         />
       )}
       {!!error && (
         <Text accessibilityRole="alert" style={styles.error}>
-          {error}
+          {t(error)}
+        </Text>
+      )}
+      {passwordChanged && (
+        <Text accessibilityRole="alert">
+          {t("Password changed. Sign in again with your new password.")}
         </Text>
       )}
       {!me ? (
         <>
+          <Text style={styles.subtitle}>
+            {t(
+              "Enter your institute’s server address once. It will be remembered on this phone.",
+            )}
+          </Text>
           <TextInput
             style={styles.input}
-            placeholder="Email"
-            accessibilityLabel="Email address"
+            accessibilityLabel={t("Server address")}
+            placeholder="https://school.example.org"
+            autoCapitalize="none"
+            keyboardType="url"
+            value={server}
+            onChangeText={setServer}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder={t("Email")}
+            accessibilityLabel={t("Email address")}
             placeholderTextColor={colors.muted}
             autoCapitalize="none"
             keyboardType="email-address"
@@ -217,8 +256,8 @@ export default function Home() {
           />
           <TextInput
             style={styles.input}
-            placeholder="Password"
-            accessibilityLabel="Password"
+            placeholder={t("Password")}
+            accessibilityLabel={t("Password")}
             placeholderTextColor={colors.muted}
             secureTextEntry
             value={password}
@@ -228,11 +267,13 @@ export default function Home() {
             "Sign in",
             () =>
               void run(async () => {
+                await configureServer(server);
                 const r = await api<{ token: string }>(
                   "/api/auth/sign-in/email",
                   { method: "POST", body: JSON.stringify({ email, password }) },
                 );
                 await SecureStore.setItemAsync("hikmah-session", r.token);
+                setPasswordChanged(false);
                 setPassword("");
                 await load();
               }),
@@ -274,7 +315,7 @@ export default function Home() {
                 <View style={styles.card} key={i}>
                   <Text style={styles.name}>{r.action}</Text>
                   <Text>
-                    {new Date(r.event_at).toLocaleString()} ·{" "}
+                    {t(new Date(r.event_at).toLocaleString())} {t(" ·")}{" "}
                     {r.reason ?? r.object_type}
                   </Text>
                 </View>
@@ -299,7 +340,9 @@ export default function Home() {
               {runs.map((r) => (
                 <View style={styles.card} key={r.id}>
                   <Text style={styles.name}>
-                    Revision {r.revision} · {r.state}
+                    {t("Revision ")}
+                    {r.revision} {t(" · ")}
+                    {t(r.state)}
                   </Text>
                   {button(
                     "Download class PDF",
@@ -308,7 +351,7 @@ export default function Home() {
                         const token =
                           await SecureStore.getItemAsync("hikmah-session");
                         const response = await fetch(
-                          `${base}/v1/results/${r.id}/sectionsheet.pdf`,
+                          `${await serverURL()}/v1/results/${r.id}/sectionsheet.pdf`,
                           { headers: { Authorization: `Bearer ${token}` } },
                         );
                         if (!response.ok) throw new Error("Download denied");
@@ -341,7 +384,7 @@ export default function Home() {
                   refreshKey={sheet?.version}
                 />
               )}
-              <Text style={styles.label}>ASSIGNED SECTIONS</Text>
+              <Text style={styles.label}>{t("ASSIGNED SECTIONS")}</Text>
               {sections
                 .filter(
                   (s) =>
@@ -353,7 +396,7 @@ export default function Home() {
                     {button(s.name, () => setSection(s.id), section !== s.id)}
                   </View>
                 ))}
-              <Text style={styles.label}>SCHOOL DATE · YYYY-MM-DD</Text>
+              <Text style={styles.label}>{t("SCHOOL DATE · YYYY-MM-DD")}</Text>
               <View style={styles.row}>
                 {[-1, 1].map((delta) => (
                   <View key={delta}>
@@ -374,14 +417,16 @@ export default function Home() {
                 ))}
               </View>
               <TextInput
-                accessibilityLabel="School date"
+                accessibilityLabel={t("School date")}
                 style={styles.input}
                 value={date}
                 onChangeText={setDate}
               />
               <Text style={styles.subtitle}>
-                {sheet?.status} · {Object.keys(records).length}/
-                {sheet?.roster.length ?? 0} marked
+                {t(sheet?.status)} {t(" · ")}
+                {t(Object.keys(records).length)}
+                {t("/")}
+                {t(sheet?.roster.length ?? 0)} {t(" marked")}
               </Text>
               {button(
                 "Mark all present",
@@ -396,14 +441,15 @@ export default function Home() {
               {sheet?.roster.map((r) => (
                 <View style={styles.card} key={r.id}>
                   <Text style={styles.name}>
-                    {r.roll_number} · {r.full_name}
+                    {r.roll_number} {t(" · ")}
+                    {r.full_name}
                   </Text>
                   <View style={styles.row}>
                     {statuses.map((status) => (
                       <Pressable
                         key={status}
                         disabled={busy || sheet.status !== "DRAFT"}
-                        accessibilityLabel={`${r.full_name} ${status}`}
+                        accessibilityLabel={`${r.full_name} ${t(status)}`}
                         onPress={() =>
                           setRecords({ ...records, [r.id]: status })
                         }
@@ -420,13 +466,15 @@ export default function Home() {
                                 : colors.primary,
                           }}
                         >
-                          {status === "PRESENT"
-                            ? "P"
-                            : status === "ABSENT"
-                              ? "A"
-                              : status === "HALF"
-                                ? "L"
-                                : "Leave"}
+                          {t(
+                            status === "PRESENT"
+                              ? "P"
+                              : status === "ABSENT"
+                                ? "A"
+                                : status === "HALF"
+                                  ? "L"
+                                  : "Leave",
+                          )}
                         </Text>
                       </Pressable>
                     ))}
@@ -470,9 +518,9 @@ export default function Home() {
               )}
               <NativeGrid section={section} run={run} />
               <TextInput
-                accessibilityLabel="Correction reason"
+                accessibilityLabel={t("Correction reason")}
                 style={styles.input}
-                placeholder="Reason to request a historical correction"
+                placeholder={t("Reason to request a historical correction")}
                 value={reason}
                 onChangeText={setReason}
               />
@@ -509,7 +557,7 @@ export default function Home() {
               {marks?.entries.map((m: any, i: number) => (
                 <View key={m.enrollmentId} style={styles.card}>
                   <Text style={styles.name}>{m.full_name}</Text>
-                  <Text style={styles.subtitle}>{m.state ?? "PENDING"}</Text>
+                  <Text style={styles.subtitle}>{t(m.state ?? "PENDING")}</Text>
                   <ScrollView horizontal>
                     {[
                       "PENDING",
@@ -526,7 +574,7 @@ export default function Home() {
                           styles.status,
                           (m.state ?? "PENDING") === state && styles.selected,
                         ]}
-                        accessibilityLabel={`${m.full_name} ${state}`}
+                        accessibilityLabel={`${m.full_name} ${t(state)}`}
                         onPress={() => {
                           const entries = [...marks.entries];
                           entries[i] = {
@@ -546,7 +594,7 @@ export default function Home() {
                                 : colors.primary,
                           }}
                         >
-                          {state}
+                          {t(state)}
                         </Text>
                       </Pressable>
                     ))}
@@ -581,7 +629,7 @@ export default function Home() {
                         }}
                       >
                         <Text style={{ color: colors.primary }}>
-                          {m[key] === true ? "☑" : "☐"} {title}
+                          {t(m[key] === true ? "☑" : "☐")} {t(title)}
                         </Text>
                       </Pressable>
                     ))}
@@ -589,7 +637,7 @@ export default function Home() {
                   <TextInput
                     style={styles.input}
                     accessibilityLabel={`Marks for ${m.full_name}`}
-                    placeholder="Unmarked"
+                    placeholder={t("Unmarked")}
                     keyboardType="decimal-pad"
                     value={m.awarded == null ? "" : String(m.awarded)}
                     onChangeText={(v) => {
@@ -656,7 +704,7 @@ export default function Home() {
                       )}
                       <TextInput
                         style={styles.input}
-                        placeholder="Reason to reopen marks"
+                        placeholder={t("Reason to reopen marks")}
                         value={reason}
                         onChangeText={setReason}
                       />
@@ -681,6 +729,20 @@ export default function Home() {
               )}
             </>
           )}
+          <AccountSettings
+            request={api}
+            onChanged={async () => {
+              await SecureStore.deleteItemAsync("hikmah-session");
+              setMe(null);
+              setPassword("");
+              setPasswordChanged(true);
+              setSheet(null);
+              setMarks(null);
+              setRecords({});
+              setHistory([]);
+              setRuns([]);
+            }}
+          />
           {button(
             "Sign out",
             () =>
@@ -813,6 +875,8 @@ function NativeGrid({
   section: string;
   run: (fn: () => Promise<void>) => Promise<void>;
 }) {
+  const { t } = useI18n();
+
   const [days, setDays] = useState<(Sheet & { schoolDate: string })[]>([]),
     [confirmed, setConfirmed] = useState(false),
     [open, setOpen] = useState(false);
@@ -843,14 +907,15 @@ function NativeGrid({
   return (
     <View style={styles.card}>
       <Pressable style={styles.button} onPress={() => void run(load)}>
-        <Text style={{ color: "white" }}>Recent three-day grid</Text>
+        <Text style={{ color: "white" }}>{t("Recent three-day grid")}</Text>
       </Pressable>
       {open && (
         <>
           {days.map((day, i) => (
             <View key={day.schoolDate}>
               <Text style={styles.name}>
-                {day.schoolDate} · {day.status}
+                {day.schoolDate} {t(" · ")}
+                {t(day.status)}
               </Text>
               {day.roster.map((r) => {
                 const current =
@@ -879,7 +944,7 @@ function NativeGrid({
                         setConfirmed(false);
                       }}
                     >
-                      <Text>{current}</Text>
+                      <Text>{t(current)}</Text>
                     </Pressable>
                   </View>
                 );
@@ -887,7 +952,7 @@ function NativeGrid({
             </View>
           ))}
           {!days.length && (
-            <Text>No instructional calendar dates in this window.</Text>
+            <Text>{t("No instructional calendar dates in this window.")}</Text>
           )}
           <Pressable
             style={styles.status}
@@ -896,7 +961,8 @@ function NativeGrid({
             onPress={() => setConfirmed(!confirmed)}
           >
             <Text>
-              {confirmed ? "✓ " : ""}Confirm saving all editable dates
+              {t(confirmed ? "✓ " : "")}
+              {t("Confirm saving all editable dates")}
             </Text>
           </Pressable>
           <Pressable
@@ -923,7 +989,7 @@ function NativeGrid({
               })
             }
           >
-            <Text style={{ color: "white" }}>Save grid atomically</Text>
+            <Text style={{ color: "white" }}>{t("Save grid atomically")}</Text>
           </Pressable>
         </>
       )}

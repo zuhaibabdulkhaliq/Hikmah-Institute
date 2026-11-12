@@ -121,6 +121,10 @@ const bodySchemas: Record<string, z.ZodType> = {
   }),
   "PATCH /v1/users/:id": z.object({ active: z.boolean(), admin: z.boolean() }),
   "POST /v1/users/:id/reset-password": reason,
+  "PUT /v1/me/password": z.object({
+    currentPassword: z.string().min(1).max(128),
+    password: z.string().min(12).max(128),
+  }),
   "POST /v1/assessments/:id/reopen": reason,
   "POST /v1/sections/:id/attendance/:date/reopen": reason,
   "POST /v1/invitations": z.object({

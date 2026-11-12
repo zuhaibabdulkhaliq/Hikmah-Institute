@@ -1,21 +1,26 @@
 "use client";
+
+import { useI18n } from "../../components/language";
 import { useState } from "react";
 import { createClient } from "@hikmah/api-client";
 import { AuthFrame } from "../../components/workspace-ui";
 export default function Activate() {
+  const { t } = useI18n();
+
   const [message, setMessage] = useState(""),
     [done, setDone] = useState(false),
     [busy, setBusy] = useState(false);
   return (
     <AuthFrame>
-      <div className="eyebrow">YOUR HIKMAH ACCOUNT</div>
-      <h1 className="login-title">Make it yours.</h1>
+      <div className="eyebrow">{t("YOUR HIKMAH ACCOUNT")}</div>
+      <h1 className="login-title">{t("Make it yours.")}</h1>
       <p>
-        Your invitation or recovery link is private and single-use. Choose a
-        password with at least 12 characters.
+        {t(
+          "Your invitation or recovery link is private and single-use. Choose a password with at least 12 characters.",
+        )}
       </p>
       {done ? (
-        <a href="/">Continue to sign in →</a>
+        <a href="/">{t("Continue to sign in →")}</a>
       ) : (
         <form
           onSubmit={async (e) => {
@@ -42,7 +47,7 @@ export default function Activate() {
           }}
         >
           <label>
-            Password
+            {t("Password")}
             <input
               name="password"
               type="password"
@@ -52,13 +57,13 @@ export default function Activate() {
             />
           </label>
           <button disabled={busy}>
-            {busy ? "Saving password…" : "Set password"}
+            {t(busy ? "Saving password…" : "Set password")}
           </button>
         </form>
       )}
       {message && (
         <p role="alert" className="notice error">
-          {message}
+          {t(message)}
         </p>
       )}
     </AuthFrame>

@@ -3,12 +3,18 @@ import {
   instituteAttendance,
   institutePolicy,
 } from "../packages/domain/src/index.ts";
+import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { pool, transaction } from "../apps/api/src/db.ts";
 const email = process.env.BOOTSTRAP_ADMIN_EMAIL,
   password = process.env.BOOTSTRAP_ADMIN_PASSWORD;
-if (!email || !password || password.length < 12)
+if (
+  !z.email().safeParse(email).success ||
+  !password ||
+  password.length < 12 ||
+  password.length > 128
+)
   throw new Error(
     "Set BOOTSTRAP_ADMIN_EMAIL and BOOTSTRAP_ADMIN_PASSWORD (12+ characters) securely",
   );
@@ -22,10 +28,14 @@ try {
     const org = randomUUID(),
       user = randomUUID(),
       authId = randomUUID();
-    await db.query("INSERT INTO organizations(id,name) VALUES($1,$2)", [
-      org,
-      process.env.INSTITUTE_NAME ?? "Hikmah Institute",
-    ]);
+    await db.query(
+      "INSERT INTO organizations(id,name,name_ur) VALUES($1,$2,$3)",
+      [
+        org,
+        process.env.INSTITUTE_NAME ?? "Hikmah Institute",
+        process.env.INSTITUTE_NAME_UR || null,
+      ],
+    );
     await db.query(
       "INSERT INTO organization_settings(organization_id,config) VALUES($1,$2)",
       [
@@ -38,15 +48,15 @@ try {
     );
     await db.query(
       'INSERT INTO "user"(id,name,email,"emailVerified") VALUES($1,$2,$3,true)',
-      [authId, "Administrator", email],
+      [authId, "Administrator", email!.toLowerCase()],
     );
     await db.query(
       'INSERT INTO account(id,"accountId","providerId","userId",password) VALUES($1,$2,\'credential\',$2,$3)',
-      [randomUUID(), authId, await hashPassword(password)],
+      [randomUUID(), authId, await hashPassword(password!)],
     );
     await db.query(
       "INSERT INTO app_users(id,auth_subject,email,display_name) VALUES($1,$2,$3,$4)",
-      [user, authId, email, "Administrator"],
+      [user, authId, email!.toLowerCase(), "Administrator"],
     );
     await db.query(
       "INSERT INTO organization_roles(organization_id,user_id,role) VALUES($1,$2,'ADMIN')",

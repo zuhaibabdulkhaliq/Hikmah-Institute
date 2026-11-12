@@ -10,8 +10,12 @@
       "supportsTablet": true,
       "bundleIdentifier": "org.hikmah.institute"
     },
-    "android": { "package": "org.hikmah.institute" },
-    "plugins": ["expo-router", "expo-secure-store"],
-    "experiments": { "typedRoutes": true }
+    "android": {
+      "package": "org.hikmah.institute"
+    },
+    "plugins": ["expo-router", "expo-secure-store", "expo-dev-client"],
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }

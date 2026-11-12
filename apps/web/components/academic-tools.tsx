@@ -1,4 +1,6 @@
 "use client";
+
+import { useI18n } from "./language";
 import { useEffect, useState } from "react";
 import { createClient } from "@hikmah/api-client";
 import { sumMarks, type Scheme } from "@hikmah/domain";
@@ -15,6 +17,8 @@ export function AttendanceTotals({
   run: Run;
   refreshKey?: number;
 }) {
+  const { t } = useI18n();
+
   const [period, setPeriod] = useState("YEAR"),
     [cycle, setCycle] = useState(""),
     [cycles, setCycles] = useState<any[]>([]),
@@ -43,48 +47,53 @@ export function AttendanceTotals({
   return (
     <div className="panel">
       <div className="panelhead">
-        <h2>Attendance totals</h2>
-        <span className="tag">Academic days only</span>
+        <h2>{t("Attendance totals")}</h2>
+        <span className="tag">{t("Academic days only")}</span>
       </div>
       <p>
-        Present = 1 · Half = 0.5 · Absent = 0 · Leave is excluded. Totals run
-        through today; unsubmitted days stay unmarked.
+        {t(
+          "Present = 1 · Half = 0.5 · Absent = 0 · Leave is excluded. Totals run through today; unsubmitted days stay unmarked.",
+        )}
       </p>
       <div className="toolbar">
         <label>
-          Reporting period
+          {t("Reporting period")}
           <select value={period} onChange={(e) => setPeriod(e.target.value)}>
-            <option value="YEAR">Academic year to date</option>
-            <option value="SESSION">Exam session</option>
-            <option value="PREVIOUS_SESSION">Previous exam session</option>
+            <option value="YEAR">{t("Academic year to date")}</option>
+            <option value="SESSION">{t("Exam session")}</option>
+            <option value="PREVIOUS_SESSION">
+              {t("Previous exam session")}
+            </option>
           </select>
         </label>
         {period !== "YEAR" && (
           <label>
-            Attendance session
+            {t("Attendance session")}
             <select value={cycle} onChange={(e) => setCycle(e.target.value)}>
               {cycles.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.title}
-                  {!c.attendance_from ? " · window not set" : ""}
+                  {t(!c.attendance_from ? " · window not set" : "")}
                 </option>
               ))}
             </select>
           </label>
         )}
         <button className="secondary" onClick={() => void run(load)}>
-          Refresh totals
+          {t("Refresh totals")}
         </button>
       </div>
       {data && (
         <>
           <p className="tiny">
-            {data.window.label} · {data.window.from} to {data.window.through}
+            {data.window.label} {t(" · ")}
+            {data.window.from} {t(" to ")}
+            {data.window.through}
           </p>
           <div
             className="tablewrap"
             tabIndex={0}
-            aria-label="Attendance totals"
+            aria-label={t("Attendance totals")}
           >
             <table>
               <thead>
@@ -99,7 +108,7 @@ export function AttendanceTotals({
                     "Unmarked",
                     "Attendance %",
                   ].map((h) => (
-                    <th key={h}>{h}</th>
+                    <th key={h}>{t(h)}</th>
                   ))}
                 </tr>
               </thead>
@@ -122,11 +131,13 @@ export function AttendanceTotals({
                         ` · ${s.legacyLate} legacy Late to review`}
                     </td>
                     <td>
-                      {s.displayPercent !== null
-                        ? `${s.displayPercent}%`
-                        : s.unmarked || s.legacyLate
-                          ? "Incomplete"
-                          : "N/A"}
+                      {t(
+                        s.displayPercent !== null
+                          ? `${s.displayPercent}%`
+                          : s.unmarked || s.legacyLate
+                            ? "Incomplete"
+                            : "N/A",
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -147,15 +158,17 @@ export function CalendarBuilder({
   run: Run;
   onSaved: () => Promise<void>;
 }) {
+  const { t } = useI18n();
+
   const [days, setDays] = useState<number[]>([]),
     [message, setMessage] = useState("");
   return (
     <details>
-      <summary>Build academic calendar & holidays</summary>
+      <summary>{t("Build academic calendar & holidays")}</summary>
       <p>
-        Choose the date range and actual teaching weekdays. All other days and
-        listed holidays will be non-academic. This updates the selected range;
-        stored published reports stay unchanged.
+        {t(
+          "Choose the date range and actual teaching weekdays. All other days and listed holidays will be non-academic. This updates the selected range; stored published reports stay unchanged.",
+        )}
       </p>
       <form
         className="gridform"
@@ -188,15 +201,15 @@ export function CalendarBuilder({
         }}
       >
         <label>
-          Calendar start
+          {t("Calendar start")}
           <input type="date" name="from" required />
         </label>
         <label>
-          Calendar end
+          {t("Calendar end")}
           <input type="date" name="through" required />
         </label>
         <fieldset className="weekday-picker">
-          <legend>Academic weekdays</legend>
+          <legend>{t("Academic weekdays")}</legend>
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => (
             <label className="check-label" key={d}>
               <input
@@ -210,23 +223,23 @@ export function CalendarBuilder({
                   )
                 }
               />
-              {d}
+              {t(d)}
             </label>
           ))}
         </fieldset>
         <label className="wide-field">
-          Holidays: one date and label per line
+          {t("Holidays: one date and label per line")}
           <textarea
             name="holidays"
-            placeholder={"2026-12-25, Holiday"}
+            placeholder={t("2026-12-25, Holiday")}
             rows={4}
           />
         </label>
-        <button disabled={!days.length}>Save academic calendar</button>
+        <button disabled={!days.length}>{t("Save academic calendar")}</button>
       </form>
       {message && (
         <p role="status" className="notice success">
-          {message}
+          {t(message)}
         </p>
       )}
     </details>
@@ -243,6 +256,8 @@ export function CurriculumPanel({
   run: Run;
   onApplied: () => Promise<void>;
 }) {
+  const { t } = useI18n();
+
   const [row, setRow] = useState<any>(null),
     [offerings, setOfferings] = useState<any[]>([]),
     [scheme, setScheme] = useState<Scheme | null>(null),
@@ -279,13 +294,14 @@ export function CurriculumPanel({
   }
   return (
     <div className="panel">
-      <h2>Class subjects & six groups</h2>
+      <h2>{t("Class subjects & six groups")}</h2>
       <p>
-        Configure this class once and reuse the same subjects, codes and groups
-        in every exam session. Schedules and marks remain separate per session.
+        {t(
+          "Configure this class once and reuse the same subjects, codes and groups in every exam session. Schedules and marks remain separate per session.",
+        )}
       </p>
       <details>
-        <summary>Manage class subject catalog</summary>
+        <summary>{t("Manage class subject catalog")}</summary>
         <form
           className="gridform"
           onSubmit={(e) => {
@@ -303,22 +319,23 @@ export function CurriculumPanel({
           }}
         >
           <label>
-            Subject code
+            {t("Subject code")}
             <input name="code" required maxLength={32} />
           </label>
           <label>
-            Subject name
+            {t("Subject name")}
             <input name="name" required />
           </label>
-          <button>Add subject to this class</button>
+          <button>{t("Add subject to this class")}</button>
         </form>
       </details>
       {scheme && (
         <details>
-          <summary>Edit annual class curriculum</summary>
+          <summary>{t("Edit annual class curriculum")}</summary>
           {scheme.groups.map((g, i) => (
             <label key={i}>
-              Group {i + 1} name
+              {t("Group ")}
+              {t(i + 1)} {t(" name")}
               <input
                 value={g.name}
                 onChange={(e) =>
@@ -327,19 +344,26 @@ export function CurriculumPanel({
                   })
                 }
               />
-              <small>Maximum: {g.max}</small>
+              <small>
+                {t("Maximum: ")}
+                {t(g.max)}
+              </small>
             </label>
           ))}
-          <div className="tablewrap" tabIndex={0} aria-label="Class curriculum">
+          <div
+            className="tablewrap"
+            tabIndex={0}
+            aria-label={t("Class curriculum")}
+          >
             <table>
               <thead>
                 <tr>
-                  <th>Subject</th>
-                  <th>Paper code</th>
-                  <th>Display label</th>
-                  <th>Maximum</th>
-                  <th>Group</th>
-                  <th>Action</th>
+                  <th>{t("Subject")}</th>
+                  <th>{t("Paper code")}</th>
+                  <th>{t("Display label")}</th>
+                  <th>{t("Maximum")}</th>
+                  <th>{t("Group")}</th>
+                  <th>{t("Action")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -347,7 +371,7 @@ export function CurriculumPanel({
                   <tr key={i}>
                     <td>
                       <select
-                        aria-label={`Curriculum subject ${i + 1}`}
+                        aria-label={t(`Curriculum subject ${i + 1}`)}
                         value={p.offeringId}
                         onChange={(e) =>
                           change((s) => {
@@ -355,17 +379,18 @@ export function CurriculumPanel({
                           })
                         }
                       >
-                        <option value="">Choose subject</option>
+                        <option value="">{t("Choose subject")}</option>
                         {offerings.map((o) => (
                           <option key={o.id} value={o.id}>
-                            {o.code} · {o.name_ur ?? o.name_en}
+                            {o.code} {t(" · ")}
+                            {o.name_ur ?? o.name_en}
                           </option>
                         ))}
                       </select>
                     </td>
                     <td>
                       <input
-                        aria-label={`Curriculum code ${i + 1}`}
+                        aria-label={t(`Curriculum code ${i + 1}`)}
                         value={p.code}
                         maxLength={32}
                         onChange={(e) =>
@@ -382,7 +407,7 @@ export function CurriculumPanel({
                     </td>
                     <td>
                       <input
-                        aria-label={`Curriculum label ${i + 1}`}
+                        aria-label={t(`Curriculum label ${i + 1}`)}
                         value={p.label}
                         onChange={(e) =>
                           change((s) => {
@@ -393,7 +418,7 @@ export function CurriculumPanel({
                     </td>
                     <td>
                       <input
-                        aria-label={`Curriculum maximum ${i + 1}`}
+                        aria-label={t(`Curriculum maximum ${i + 1}`)}
                         type="number"
                         min="0.01"
                         step="0.01"
@@ -407,7 +432,7 @@ export function CurriculumPanel({
                     </td>
                     <td>
                       <select
-                        aria-label={`Curriculum group ${i + 1}`}
+                        aria-label={t(`Curriculum group ${i + 1}`)}
                         value={scheme.groups.findIndex((g) =>
                           g.paperCodes.includes(p.code),
                         )}
@@ -425,7 +450,7 @@ export function CurriculumPanel({
                         }
                       >
                         <option value={-1} disabled>
-                          Choose group
+                          {t("Choose group")}
                         </option>
                         {scheme.groups.map((g, j) => (
                           <option key={j} value={j}>
@@ -447,7 +472,7 @@ export function CurriculumPanel({
                           })
                         }
                       >
-                        Remove
+                        {t("Remove")}
                       </button>
                     </td>
                   </tr>
@@ -474,7 +499,7 @@ export function CurriculumPanel({
                 })
               }
             >
-              Add curriculum paper
+              {t("Add curriculum paper")}
             </button>
             <button
               onClick={() =>
@@ -493,7 +518,7 @@ export function CurriculumPanel({
                 })
               }
             >
-              Save class curriculum
+              {t("Save class curriculum")}
             </button>
           </div>
         </details>
@@ -513,7 +538,7 @@ export function CurriculumPanel({
           }
           disabled={!!row?.version}
         >
-          Use this session as class curriculum
+          {t("Use this session as class curriculum")}
         </button>
         <button
           disabled={!row?.version}
@@ -530,12 +555,12 @@ export function CurriculumPanel({
             })
           }
         >
-          Initialize selected session
+          {t("Initialize selected session")}
         </button>
       </div>
       {message && (
         <p role="status" className="notice success">
-          {message}
+          {t(message)}
         </p>
       )}
     </div>
@@ -550,6 +575,8 @@ export function StudentPerformance({
   cycle: string;
   run: Run;
 }) {
+  const { t } = useI18n();
+
   const [roster, setRoster] = useState<any[]>([]),
     [student, setStudent] = useState(""),
     [period, setPeriod] = useState("YEAR"),
@@ -596,34 +623,37 @@ export function StudentPerformance({
     ) ?? [];
   return (
     <div className="panel">
-      <h2>Student performance & history</h2>
+      <h2>{t("Student performance & history")}</h2>
       <p>
-        Review this class's students across exam sessions and previous academic
-        years. Published results retain their original values; live incomplete
-        marks are labeled draft.
+        {t(
+          "Review this class's students across exam sessions and previous academic years. Published results retain their original values; live incomplete marks are labeled draft.",
+        )}
       </p>
       <div className="toolbar">
         <label>
-          Student
+          {t("Student")}
           <select value={student} onChange={(e) => setStudent(e.target.value)}>
             {roster.map((s) => (
               <option key={s.id} value={s.student_id}>
-                {s.student_number} · {s.full_name}
+                {s.student_number} {t(" · ")}
+                {s.full_name}
               </option>
             ))}
           </select>
         </label>
         <label>
-          Performance period
+          {t("Performance period")}
           <select value={period} onChange={(e) => setPeriod(e.target.value)}>
-            <option value="YEAR">Academic year</option>
-            <option value="SESSION">Selected exam session</option>
-            <option value="HISTORY">All previous years & current year</option>
+            <option value="YEAR">{t("Academic year")}</option>
+            <option value="SESSION">{t("Selected exam session")}</option>
+            <option value="HISTORY">
+              {t("All previous years & current year")}
+            </option>
           </select>
         </label>
         {period === "YEAR" && (
           <label>
-            Academic year
+            {t("Academic year")}
             <select value={year} onChange={(e) => setYear(e.target.value)}>
               {Array.from(
                 new Map(
@@ -638,7 +668,7 @@ export function StudentPerformance({
           </label>
         )}
         <button className="secondary" onClick={() => void run(load)}>
-          Refresh performance
+          {t("Refresh performance")}
         </button>
       </div>
       {student && (
@@ -647,7 +677,7 @@ export function StudentPerformance({
             className="action-link"
             href={`/v1/students/${student}/performance.pdf?${q}`}
           >
-            Download student report PDF
+            {t("Download student report PDF")}
           </a>
           <a
             className="action-link"
@@ -657,7 +687,7 @@ export function StudentPerformance({
                 : `/v1/sections/${section}/performance.pdf`
             }
           >
-            Download class report PDF
+            {t("Download class report PDF")}
           </a>
           <a
             className="action-link"
@@ -667,7 +697,7 @@ export function StudentPerformance({
                 : `/v1/sections/${section}/performance.csv`
             }
           >
-            Download class report CSV
+            {t("Download class report CSV")}
           </a>
         </div>
       )}
@@ -675,50 +705,68 @@ export function StudentPerformance({
         ?.filter((y: any) => period === "HISTORY" || y.yearId === year)
         .map((y: any) => (
           <div className="notice" key={y.yearId}>
-            <strong>Whole-year summary · {y.year}</strong>
+            <strong>
+              {t("Whole-year summary · ")}
+              {y.year}
+            </strong>
             <p>
-              All class enrollments: {y.attendance.academicDays} academic days ·
-              Present {y.attendance.present} · Absent {y.attendance.absent} ·
-              Half {y.attendance.half} · Leave {y.attendance.leave} · Unmarked{" "}
-              {y.attendance.unmarked} · Attendance{" "}
-              {y.attendance.displayPercent ?? "Incomplete / N/A"}%
+              {t("All class enrollments: ")}
+              {y.attendance.academicDays} {t(" academic days · Present ")}
+              {y.attendance.present} {t(" · Absent ")}
+              {y.attendance.absent} {t(" · Half ")}
+              {y.attendance.half} {t(" · Leave ")}
+              {y.attendance.leave} {t(" · Unmarked")} {y.attendance.unmarked}{" "}
+              {t(" · Attendance")}{" "}
+              {t(y.attendance.displayPercent ?? "Incomplete / N/A")}
+              {t("%")}
             </p>
             <span>
-              Combined recorded marks {y.combined.total} / {y.combined.possible}{" "}
-              · {y.combined.percent ?? "Incomplete"}%
+              {t("Combined recorded marks ")}
+              {y.combined.total} {t(" / ")}
+              {y.combined.possible} {t("· ")}
+              {t(y.combined.percent ?? "Incomplete")}
+              {t("%")}
             </span>
           </div>
         ))}
       {years.map((y: any) => (
         <div className="panel" key={y.enrollmentId}>
           <h3>
-            {y.year} · {y.program} · {y.level} · {y.section}
+            {y.year} {t(" · ")}
+            {y.program} {t(" · ")}
+            {y.level} {t(" · ")}
+            {y.section}
           </h3>
           {y.attendance && (
             <p>
-              Academic days {y.attendance.academicDays} · Present{" "}
-              {y.attendance.present} · Absent {y.attendance.absent} · Half{" "}
-              {y.attendance.half} · Leave {y.attendance.leave} · Unmarked{" "}
-              {y.attendance.unmarked} · Attendance{" "}
-              {y.attendance.displayPercent === null
-                ? "Incomplete / N/A"
-                : `${y.attendance.displayPercent}%`}
+              {t("Academic days ")}
+              {y.attendance.academicDays} {t(" · Present")}{" "}
+              {y.attendance.present} {t(" · Absent ")}
+              {y.attendance.absent} {t(" · Half")} {y.attendance.half}{" "}
+              {t(" · Leave ")}
+              {y.attendance.leave} {t(" · Unmarked")} {y.attendance.unmarked}{" "}
+              {t(" · Attendance")}{" "}
+              {t(
+                y.attendance.displayPercent === null
+                  ? "Incomplete / N/A"
+                  : `${y.attendance.displayPercent}%`,
+              )}
             </p>
           )}
           <div
             className="tablewrap"
             tabIndex={0}
-            aria-label="Student exam performance"
+            aria-label={t("Student exam performance")}
           >
             <table>
               <thead>
                 <tr>
-                  <th>Session</th>
-                  <th>Total</th>
-                  <th>Percentage</th>
-                  <th>Pass status</th>
-                  <th>Position</th>
-                  <th>Publication</th>
+                  <th>{t("Session")}</th>
+                  <th>{t("Total")}</th>
+                  <th>{t("Percentage")}</th>
+                  <th>{t("Pass status")}</th>
+                  <th>{t("Position")}</th>
+                  <th>{t("Publication")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -726,19 +774,24 @@ export function StudentPerformance({
                   <tr key={x.cycleId}>
                     <td>{x.title}</td>
                     <td>
-                      {x.result.total} / {x.result.possible}
+                      {x.result.total} {t(" / ")}
+                      {x.result.possible}
                     </td>
                     <td>
-                      {x.result.percent === null
-                        ? "Pending"
-                        : `${Number(x.result.percent).toFixed(1)}%`}
+                      {t(
+                        x.result.percent === null
+                          ? "Pending"
+                          : `${Number(x.result.percent).toFixed(1)}%`,
+                      )}
                     </td>
                     <td>
-                      {!x.complete
-                        ? "Incomplete"
-                        : x.result.passing
-                          ? "Pass"
-                          : "Fail"}
+                      {t(
+                        !x.complete
+                          ? "Incomplete"
+                          : x.result.passing
+                            ? "Pass"
+                            : "Fail",
+                      )}
                     </td>
                     <td>
                       {x.result.rank ?? "—"}
@@ -746,9 +799,11 @@ export function StudentPerformance({
                       <small>{x.positionReason}</small>
                     </td>
                     <td>
-                      {x.official
-                        ? `Published · revision ${x.publication.revision}`
-                        : "Draft"}
+                      {t(
+                        x.official
+                          ? `Published · revision ${x.publication.revision}`
+                          : "Draft",
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -756,17 +811,20 @@ export function StudentPerformance({
             </table>
           </div>
           <p className="tiny">
-            Combined recorded marks: {y.combined.total} / {y.combined.possible}{" "}
-            ·{" "}
-            {y.combined.percent === null
-              ? "Incomplete"
-              : `${y.combined.percent}%`}
-            . No annual position is inferred.
+            {t("Combined recorded marks: ")}
+            {y.combined.total} {t(" / ")}
+            {y.combined.possible} {t("·")}{" "}
+            {t(
+              y.combined.percent === null
+                ? "Incomplete"
+                : `${y.combined.percent}%`,
+            )}
+            {t(". No annual position is inferred.")}
           </p>
         </div>
       ))}
       {report && !years.length && (
-        <p className="empty">No records in this selection.</p>
+        <p className="empty">{t("No records in this selection.")}</p>
       )}
     </div>
   );
@@ -778,14 +836,16 @@ export function CreateAccount({
   run: Run;
   onSaved: () => Promise<void>;
 }) {
+  const { t } = useI18n();
+
   const [message, setMessage] = useState("");
   return (
     <details>
-      <summary>Create a staff account with an initial password</summary>
+      <summary>{t("Create a staff account with an initial password")}</summary>
       <p>
-        New accounts have no class or subject access until you assign it in
-        Academic setup. Grant institution administrator access only where
-        needed.
+        {t(
+          "New accounts have no class or subject access until you assign it in Academic setup. Grant institution administrator access only where needed.",
+        )}
       </p>
       <form
         className="gridform"
@@ -804,15 +864,15 @@ export function CreateAccount({
         }}
       >
         <label>
-          Full name
+          {t("Full name")}
           <input name="name" required autoComplete="off" />
         </label>
         <label>
-          Account email
+          {t("Account email")}
           <input name="email" type="email" required autoComplete="off" />
         </label>
         <label>
-          Initial password
+          {t("Initial password")}
           <input
             name="password"
             type="password"
@@ -822,17 +882,19 @@ export function CreateAccount({
             autoComplete="new-password"
           />
         </label>
-        <button>Create staff account</button>
+        <button>{t("Create staff account")}</button>
       </form>
-      {message && <p role="status">{message}</p>}
+      {message && <p role="status">{t(message)}</p>}
     </details>
   );
 }
 export function ChangePassword({ run, users }: { run: Run; users: any[] }) {
+  const { t } = useI18n();
+
   const [message, setMessage] = useState("");
   return (
     <details>
-      <summary>Change a staff password directly</summary>
+      <summary>{t("Change a staff password directly")}</summary>
       <form
         className="gridform"
         onSubmit={(e) => {
@@ -853,19 +915,20 @@ export function ChangePassword({ run, users }: { run: Run; users: any[] }) {
         }}
       >
         <label>
-          Account
+          {t("Account")}
           <select name="user">
             {users
               .filter((u) => u.active)
               .map((u) => (
                 <option value={u.id} key={u.id}>
-                  {u.display_name} · {u.email}
+                  {u.display_name} {t(" · ")}
+                  {u.email}
                 </option>
               ))}
           </select>
         </label>
         <label>
-          New password
+          {t("New password")}
           <input
             name="password"
             type="password"
@@ -876,12 +939,12 @@ export function ChangePassword({ run, users }: { run: Run; users: any[] }) {
           />
         </label>
         <label>
-          Reason
+          {t("Reason")}
           <input name="reason" minLength={5} required />
         </label>
-        <button>Change password & revoke sessions</button>
+        <button>{t("Change password & revoke sessions")}</button>
       </form>
-      {message && <p role="status">{message}</p>}
+      {message && <p role="status">{t(message)}</p>}
     </details>
   );
 }
@@ -892,6 +955,8 @@ export function PromotionPicker({
   section: string;
   run: Run;
 }) {
+  const { t } = useI18n();
+
   const [sections, setSections] = useState<any[]>([]),
     [roster, setRoster] = useState<any[]>([]),
     [selected, setSelected] = useState<string[]>([]),
@@ -905,10 +970,13 @@ export function PromotionPicker({
   }, [section]);
   return (
     <details>
-      <summary>Promote selected learners into a new academic year</summary>
+      <summary>
+        {t("Promote selected learners into a new academic year")}
+      </summary>
       <p>
-        Choose only the learners being promoted. Their student IDs and previous
-        marks, attendance and enrollments are retained.
+        {t(
+          "Choose only the learners being promoted. Their student IDs and previous marks, attendance and enrollments are retained.",
+        )}
       </p>
       <form
         className="gridform"
@@ -932,9 +1000,9 @@ export function PromotionPicker({
         }}
       >
         <label>
-          New academic-year class
+          {t("New academic-year class")}
           <select name="target" required>
-            <option value="">Choose target class</option>
+            <option value="">{t("Choose target class")}</option>
             {sections
               .filter(
                 (s) =>
@@ -944,17 +1012,20 @@ export function PromotionPicker({
               )
               .map((s) => (
                 <option value={s.id} key={s.id}>
-                  {s.year_label} · {s.program_name} · {s.level_name} · {s.name}
+                  {s.year_label} {t(" · ")}
+                  {s.program_name} {t(" · ")}
+                  {s.level_name} {t(" · ")}
+                  {s.name}
                 </option>
               ))}
           </select>
         </label>
         <label>
-          New joining date
+          {t("New joining date")}
           <input name="date" type="date" required />
         </label>
         <fieldset className="wide-field">
-          <legend>Learners to promote</legend>
+          <legend>{t("Learners to promote")}</legend>
           {roster.map((s) => (
             <label className="check-label" key={s.id}>
               <input
@@ -968,17 +1039,19 @@ export function PromotionPicker({
                   )
                 }
               />
-              {s.student_number} · {s.full_name}
+              {s.student_number} {t(" · ")}
+              {s.full_name}
             </label>
           ))}
         </fieldset>
         <button disabled={!selected.length}>
-          Promote {selected.length} selected learners
+          {t("Promote ")}
+          {t(selected.length)} {t(" selected learners")}
         </button>
       </form>
       {message && (
         <p role="status" className="notice success">
-          {message}
+          {t(message)}
         </p>
       )}
     </details>

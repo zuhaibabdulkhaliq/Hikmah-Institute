@@ -1,5 +1,7 @@
 # Hikmah Institute Academic Management
 
+English/Urdu switching, staff password changes, stable demo accounts and native phone testing are described in [the institute release guide](docs/INSTITUTE_RELEASE.md). Use [Docker + Expo Go](docs/MOBILE_TESTING.md) for an iPhone/Android test from your Mac, and [the hosting guide](docs/HOSTING.md) for a managed PostgreSQL + HTTPS installation.
+
 A TypeScript workspace with a Next.js staff portal, an Expo Android/iOS app, a Fastify API, PostgreSQL migrations, and shared domain algorithms. The original build specification is preserved in `Hikmah_Final_Blueprint/`.
 
 The implementation includes academic configuration, scoped staff assignments, synthetic enrollment, daily/grid attendance, teacher paper marks, explicit academic policy approval, result preflight, immutable publication revisions, Urdu PDF exports, staff invitation/activation, CSV import and encrypted backup tools. See [the delivery record](docs/IMPLEMENTATION_STATUS.md) for verification and limitations. This is **not yet approved for real student rollout**.

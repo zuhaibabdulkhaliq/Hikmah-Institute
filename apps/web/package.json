@@ -12,7 +12,8 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "@hikmah/api-client": "workspace:*",
-    "@hikmah/domain": "workspace:*"
+    "@hikmah/domain": "workspace:*",
+    "@hikmah/ui-tokens": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "19.3.0",

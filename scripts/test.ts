@@ -34,6 +34,7 @@ try {
     "tests/domain.test.ts",
     "tests/calendar.test.ts",
     "tests/session-sheet.test.ts",
+    "tests/release.test.ts",
     "tests/zz-academic-rules.test.ts",
   ]);
 } finally {

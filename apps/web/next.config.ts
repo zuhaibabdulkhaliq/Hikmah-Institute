@@ -9,11 +9,16 @@ const config: NextConfig = {
       ? "true"
       : "false",
   },
-  transpilePackages: ["@hikmah/api-client", "@hikmah/domain"],
+  transpilePackages: [
+    "@hikmah/api-client",
+    "@hikmah/domain",
+    "@hikmah/ui-tokens",
+  ],
   poweredByHeader: false,
   async rewrites() {
     const api = process.env.API_INTERNAL_URL ?? "http://127.0.0.1:3001";
     return [
+      { source: "/health", destination: `${api}/health` },
       { source: "/v1/:path*", destination: `${api}/v1/:path*` },
       { source: "/api/auth/:path*", destination: `${api}/api/auth/:path*` },
     ];

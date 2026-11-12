@@ -1,4 +1,6 @@
 "use client";
+
+import { useI18n } from "./language";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@hikmah/api-client";
 import {
@@ -33,6 +35,8 @@ export function SessionResultSheet({
   cycle: string;
   onImported: () => void;
 }) {
+  const { t } = useI18n();
+
   const [sheet, setSheet] = useState<ResultSheetData | null>(null),
     [source, setSource] = useState("AUTO"),
     [refresh, setRefresh] = useState(0);
@@ -209,27 +213,30 @@ export function SessionResultSheet({
   return (
     <section
       className="panel session-results-panel"
-      aria-label="Session results sheet"
+      aria-label={t("Session results sheet")}
     >
       <div className="panelhead">
         <div>
-          <h2>Session results sheet</h2>
+          <h2>{t("Session results sheet")}</h2>
           <p className="tiny">
-            A complete class sheet with one column per paper, matching the
-            institute’s Urdu report layout.
+            {t(
+              "A complete class sheet with one column per paper, matching the institute’s Urdu report layout.",
+            )}
           </p>
         </div>
         <span className="tag">
-          {sheet?.source === "PUBLISHED"
-            ? `Published · revision ${sheet.publication?.revision}`
-            : "Working marks · draft"}
+          {t(
+            sheet?.source === "PUBLISHED"
+              ? `Published · revision ${sheet.publication?.revision}`
+              : "Working marks · draft",
+          )}
         </span>
       </div>
       <div className="toolbar">
         <label>
-          Sheet source
+          {t("Sheet source")}
           <select
-            aria-label="Sheet source"
+            aria-label={t("Sheet source")}
             value={source}
             onChange={(e) => {
               setSource(e.target.value);
@@ -237,10 +244,10 @@ export function SessionResultSheet({
             }}
           >
             <option value="AUTO">
-              Latest published, otherwise working marks
+              {t("Latest published, otherwise working marks")}
             </option>
-            <option value="LIVE">Working marks — draft</option>
-            <option value="PUBLISHED">Latest published revision</option>
+            <option value="LIVE">{t("Working marks — draft")}</option>
+            <option value="PUBLISHED">{t("Latest published revision")}</option>
           </select>
         </label>
         <button
@@ -251,7 +258,7 @@ export function SessionResultSheet({
             setSheetError("");
           }}
         >
-          Refresh sheet
+          {t("Refresh sheet")}
         </button>
         {sheet && (
           <>
@@ -259,51 +266,55 @@ export function SessionResultSheet({
               className="action-link"
               href={path + `/result-sheet.pdf?source=${sheet.source}`}
             >
-              Download session sheet PDF
+              {t("Download session sheet PDF")}
             </a>
             <a
               className="action-link"
               href={path + `/result-sheet.csv?source=${sheet.source}`}
             >
-              Download session sheet CSV
+              {t("Download session sheet CSV")}
             </a>
           </>
         )}
       </div>
       {sheetError && (
         <p role="alert" className="notice error">
-          {sheetError}
+          {t(sheetError)}
         </p>
       )}
-      {loading && <p role="status">Loading session sheet…</p>}
+      {loading && <p role="status">{t("Loading session sheet…")}</p>}
       {snapshot && (
         <>
           {sheet.source === "LIVE" && (
             <p className="notice">
-              Draft — not an official result. Blank or unresolved marks remain
-              distinct from zero. Publication still requires approved policies,
-              a complete scheme, submitted attendance and reviewed papers.
+              {t(
+                "Draft — not an official result. Blank or unresolved marks remain distinct from zero. Publication still requires approved policies, a complete scheme, submitted attendance and reviewed papers.",
+              )}
             </p>
           )}
           {sheet.source === "PUBLISHED" && (
             <p className="tiny">
-              These are the frozen marks from revision{" "}
-              {sheet.publication?.revision}. Working-mark changes appear under
-              “Working marks — draft”. The{" "}
+              {t("These are the frozen marks from revision")}{" "}
+              {t(sheet.publication?.revision)}
+              {t(
+                ". Working-mark changes appear under “Working marks — draft”. The",
+              )}{" "}
               <a href={`/v1/results/${sheet.publication?.id}/sectionsheet.pdf`}>
-                original archived PDF
+                {t("original archived PDF")}
               </a>{" "}
-              remains available.
+              {t("remains available.")}
             </p>
           )}
           {sheet.source === "LIVE" && !!sheet.blockingErrors.length && (
             <details>
               <summary>
-                Publication checks ({sheet.blockingErrors.length})
+                {t("Publication checks (")}
+                {t(sheet.blockingErrors.length)}
+                {t(")")}
               </summary>
               <ul>
                 {sheet.blockingErrors.map((error) => (
-                  <li key={error}>{error}</li>
+                  <li key={error}>{t(error)}</li>
                 ))}
               </ul>
             </details>
@@ -315,14 +326,15 @@ export function SessionResultSheet({
                 snapshot.institute.name}
             </strong>
             <span>
-              کشف الدرجات — {snapshot.cycle.title} ·{" "}
-              {snapshot.year.hijri_label || snapshot.year.label}
+              {t("کشف الدرجات — ")}
+              {snapshot.cycle.title} {t(" ·")}{" "}
+              {t(snapshot.year.hijri_label || snapshot.year.label)}
             </span>
             <span>
               {snapshot.level?.name_ur ||
                 snapshot.level?.name_en ||
                 snapshot.section.name}{" "}
-              {snapshot.program?.name && `(${snapshot.program.name})`} ·{" "}
+              {snapshot.program?.name && `(${snapshot.program.name})`} {t(" ·")}{" "}
               {snapshot.section.code}
             </span>
           </div>
@@ -330,40 +342,42 @@ export function SessionResultSheet({
             className="tablewrap session-sheet-scroll"
             dir="rtl"
             tabIndex={0}
-            aria-label="Urdu class result sheet. Scroll horizontally to see every paper."
+            aria-label={t(
+              "Urdu class result sheet. Scroll horizontally to see every paper.",
+            )}
           >
             <table className="session-sheet-table" dir="rtl">
               <thead>
                 <tr>
                   <th rowSpan={2} className="identity">
-                    نمبر شمار
+                    {t("نمبر شمار")}
                   </th>
                   <th rowSpan={2} className="identity">
-                    نام طالب علم
+                    {t("نام طالب علم")}
                   </th>
-                  <th>حاضری</th>
+                  <th>{t("حاضری")}</th>
                   {snapshot.scheme.papers.map((p) => (
                     <th key={p.code}>
-                      {p.label}
+                      {t(p.label)}
                       <small dir="ltr">{p.code}</small>
                     </th>
                   ))}
-                  <th>مجموعہ</th>
-                  <th>فیصد</th>
-                  <th rowSpan={2}>تقدیر</th>
-                  <th rowSpan={2}>پوزیشن</th>
+                  <th>{t("مجموعہ")}</th>
+                  <th>{t("فیصد")}</th>
+                  <th rowSpan={2}>{t("تقدیر")}</th>
+                  <th rowSpan={2}>{t("پوزیشن")}</th>
                 </tr>
                 <tr>
-                  <th dir="ltr">100%</th>
+                  <th dir="ltr">{t("100%")}</th>
                   {snapshot.scheme.papers.map((p) => (
                     <th key={p.code} dir="ltr">
-                      {p.max}
+                      {t(p.max)}
                     </th>
                   ))}
                   <th dir="ltr">
-                    {sumMarks(snapshot.scheme.papers.map((p) => p.max))}
+                    {t(sumMarks(snapshot.scheme.papers.map((p) => p.max)))}
                   </th>
-                  <th dir="ltr">100%</th>
+                  <th dir="ltr">{t("100%")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -376,7 +390,7 @@ export function SessionResultSheet({
                         {s.name}
                         <small dir="ltr">{s.studentNumber}</small>
                       </td>
-                      <td dir="ltr">{sheetAttendance(s.attendance)}</td>
+                      <td dir="ltr">{t(sheetAttendance(s.attendance))}</td>
                       {snapshot.scheme.papers.map((p) => {
                         const m = s.marks[p.code],
                           graded = m?.state === "GRADED" && m.awarded != null;
@@ -385,32 +399,34 @@ export function SessionResultSheet({
                             key={p.code}
                             className={graded ? "" : "unresolved"}
                           >
-                            {graded ? <bdi>{m.awarded}</bdi> : markLabel(m)}
+                            {graded ? <bdi>{t(m.awarded)}</bdi> : markLabel(m)}
                           </td>
                         );
                       })}
                       <td>
-                        <bdi>{s.total}</bdi>
-                        {incomplete && <small>جزوی / Partial</small>}
+                        <bdi>{t(s.total)}</bdi>
+                        {incomplete && <small>{t("جزوی / Partial")}</small>}
                       </td>
                       <td className="derived">
                         <bdi>
-                          {incomplete ? "—" : (s.displayPercent ?? "—")}
+                          {t(incomplete ? "—" : (s.displayPercent ?? "—"))}
                         </bdi>
                       </td>
                       <td className="derived">
-                        {incomplete ? "—" : (s.grade ?? "—")}
+                        {t(incomplete ? "—" : (s.grade ?? "—"))}
                       </td>
                       <td>
-                        {incomplete
-                          ? "—"
-                          : s.rank === 1
-                            ? "اول"
-                            : s.rank === 2
-                              ? "دوم"
-                              : s.rank === 3
-                                ? "سوم"
-                                : (s.rank ?? "—")}
+                        {t(
+                          incomplete
+                            ? "—"
+                            : s.rank === 1
+                              ? "اول"
+                              : s.rank === 2
+                                ? "دوم"
+                                : s.rank === 3
+                                  ? "سوم"
+                                  : (s.rank ?? "—"),
+                        )}
                       </td>
                     </tr>
                   );
@@ -419,19 +435,22 @@ export function SessionResultSheet({
             </table>
           </div>
           <p className="tiny">
-            Red cells show explicit missing/absence/leave states. A numeric zero
-            is a graded score. Attendance is listed separately from exam marks.
-            Grades and positions follow approved institute policies.
+            {t(
+              "Red cells show explicit missing/absence/leave states. A numeric zero is a graded score. Attendance is listed separately from exam marks. Grades and positions follow approved institute policies.",
+            )}
           </p>
         </>
       )}
       <details className="session-import" open>
-        <summary>Upload class marks from CSV</summary>
+        <summary>{t("Upload class marks from CSV")}</summary>
         <p>
-          Download this class/session’s template, enter marks in its paper
-          columns, save as <strong>CSV UTF-8</strong>, then upload it here.
-          Students, roll numbers and attendance are already filled in. Leave
-          reference rows, names and paper headings unchanged.
+          {t(
+            "Download this class/session’s template, enter marks in its paper columns, save as ",
+          )}
+          <strong>{t("CSV UTF-8")}</strong>
+          {t(
+            ", then upload it here. Students, roll numbers and attendance are already filled in. Leave reference rows, names and paper headings unchanged.",
+          )}
         </p>
         <div className="toolbar">
           <a
@@ -441,7 +460,7 @@ export function SessionResultSheet({
               `/marks/template.csv?timing=${timing ? "include" : "preserve"}`
             }
           >
-            Download blank marks CSV
+            {t("Download blank marks CSV")}
           </a>
           <label className="check-label">
             <input
@@ -449,15 +468,13 @@ export function SessionResultSheet({
               checked={timing}
               onChange={(e) => setTiming(e.target.checked)}
             />
-            Include exam leave and on-time columns
+            {t("Include exam leave and on-time columns")}
           </label>
         </div>
         <p className="tiny">
-          Blank marks keep existing values. Use 0 for an actual zero. Allowed
-          status words: ABSENT, PENDING, WITHHELD, EXEMPT, LEAVE. Timing is
-          preserved unless included and explicitly edited; new marks do not
-          automatically count as on time. Total, percentage, grade and position
-          are always calculated by the system.
+          {t(
+            "Blank marks keep existing values. Use 0 for an actual zero. Allowed status words: ABSENT, PENDING, WITHHELD, EXEMPT, LEAVE. Timing is preserved unless included and explicitly edited; new marks do not automatically count as on time. Total, percentage, grade and position are always calculated by the system.",
+          )}
         </p>
         <form
           noValidate
@@ -468,10 +485,10 @@ export function SessionResultSheet({
         >
           <div className="gridform">
             <label>
-              Completed marks CSV
+              {t("Completed marks CSV")}
               <input
                 ref={fileInput}
-                aria-label="Completed marks CSV"
+                aria-label={t("Completed marks CSV")}
                 type="file"
                 accept=".csv,text/csv"
                 disabled={busy}
@@ -479,14 +496,14 @@ export function SessionResultSheet({
               />
             </label>
             <label>
-              Import reason
+              {t("Import reason")}
               <input
                 value={reason}
                 disabled={busy}
                 minLength={5}
                 maxLength={1000}
                 required
-                placeholder="For example, reviewed Shash Mahi marks entry"
+                placeholder={t("For example, reviewed Shash Mahi marks entry")}
                 onChange={(e) => {
                   setReason(e.target.value);
                   setAck(false);
@@ -495,48 +512,58 @@ export function SessionResultSheet({
             </label>
           </div>
           {fileName && (
-            <p className="tiny">Selected file: {fileName} · Maximum 500 KB</p>
+            <p className="tiny">
+              {t("Selected file: ")}
+              {t(fileName)} {t(" · Maximum 500 KB")}
+            </p>
           )}
           <button disabled={busy || !csv}>
-            {busy ? "Working…" : "Validate uploaded CSV"}
+            {t(busy ? "Working…" : "Validate uploaded CSV")}
           </button>
         </form>
         <div ref={feedback} tabIndex={-1}>
           {error && (
             <p role="alert" className="notice error">
-              {error}
+              {t(error)}
             </p>
           )}
           {message && (
             <p role="status" className="notice success">
-              {message}
+              {t(message)}
             </p>
           )}
-          {busy && <p role="status">Working… please wait.</p>}
+          {busy && <p role="status">{t("Working… please wait.")}</p>}
         </div>
         {current && (
           <section
             ref={previewRegion}
             tabIndex={-1}
             className="session-import-preview"
-            aria-label="Marks import preview"
+            aria-label={t("Marks import preview")}
           >
             <h3>
-              {current.canApply
-                ? "Ready for your review"
-                : "Fix the validation issues before importing"}
+              {t(
+                current.canApply
+                  ? "Ready for your review"
+                  : "Fix the validation issues before importing",
+              )}
             </h3>
             <div className="toolbar">
               <span className="tag">
-                {current.summary.changedCells} changed entries
-              </span>
-              <span className="tag">{current.summary.students} students</span>
-              <span className="tag">{current.summary.papers} papers</span>
-              <span className="tag">
-                {current.summary.overwrites} existing entries replaced
+                {t(current.summary.changedCells)} {t(" changed entries")}
               </span>
               <span className="tag">
-                {current.summary.blankCells} blank cells preserved
+                {t(current.summary.students)} {t(" students")}
+              </span>
+              <span className="tag">
+                {t(current.summary.papers)} {t(" papers")}
+              </span>
+              <span className="tag">
+                {t(current.summary.overwrites)}{" "}
+                {t(" existing entries replaced")}
+              </span>
+              <span className="tag">
+                {t(current.summary.blankCells)} {t(" blank cells preserved")}
               </span>
             </div>
             {!!current.errors.length && (
@@ -545,28 +572,31 @@ export function SessionResultSheet({
                   <ul>
                     {current.errors.slice(0, 100).map((e, i) => (
                       <li key={i}>
-                        {e.row ? `Row ${e.row}` : "File"}
+                        {t(e.row ? `Row ${e.row}` : "File")}
                         {e.studentNumber ? ` · ${e.studentNumber}` : ""}
-                        {e.column ? ` · ${e.column}` : ""}: {e.message}
+                        {t(e.column ? ` · ${e.column}` : "")}
+                        {t(": ")}
+                        {t(e.message)}
                       </li>
                     ))}
                   </ul>
                   {current.errors.length > 100 && (
                     <p>
-                      Showing the first 100 issues. Download the complete error
-                      list.
+                      {t(
+                        "Showing the first 100 issues. Download the complete error list.",
+                      )}
                     </p>
                   )}
                 </div>
                 <button className="secondary" onClick={downloadErrors}>
-                  Download validation errors CSV
+                  {t("Download validation errors CSV")}
                 </button>
               </>
             )}
             {!!current.warnings.length && (
               <ul className="tiny">
                 {current.warnings.map((w) => (
-                  <li key={w}>{w}</li>
+                  <li key={w}>{t(w)}</li>
                 ))}
               </ul>
             )}
@@ -575,10 +605,10 @@ export function SessionResultSheet({
                 <table>
                   <thead>
                     <tr>
-                      <th>Student</th>
-                      <th>Paper</th>
-                      <th>Before</th>
-                      <th>After</th>
+                      <th>{t("Student")}</th>
+                      <th>{t("Paper")}</th>
+                      <th>{t("Before")}</th>
+                      <th>{t("After")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -588,18 +618,21 @@ export function SessionResultSheet({
                           {c.name}
                           <small>{c.studentNumber}</small>
                         </td>
-                        <td>{c.paperCode}</td>
-                        <td>{c.before}</td>
-                        <td>{c.after}</td>
+                        <td>{t(c.paperCode)}</td>
+                        <td>{t(c.before)}</td>
+                        <td>{t(c.after)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
                 {current.summary.changedCells > current.changes.length && (
                   <p className="tiny">
-                    Showing the first {current.changes.length} of{" "}
-                    {current.summary.changedCells} changes. Every validated
-                    change is included when applying.
+                    {t("Showing the first ")}
+                    {t(current.changes.length)} {t(" of")}{" "}
+                    {t(current.summary.changedCells)}{" "}
+                    {t(
+                      " changes. Every validated change is included when applying.",
+                    )}
                   </p>
                 )}
               </div>
@@ -611,9 +644,9 @@ export function SessionResultSheet({
                   checked={ack}
                   onChange={(e) => setAck(e.target.checked)}
                 />
-                I reviewed and approve replacing the{" "}
-                {current.summary.overwrites} existing mark entries shown in this
-                preview.
+                {t("I reviewed and approve replacing the")}{" "}
+                {t(current.summary.overwrites)}{" "}
+                {t(" existing mark entries shown in this preview.")}
               </label>
             )}
             <button
@@ -624,11 +657,12 @@ export function SessionResultSheet({
               }
               onClick={() => void apply()}
             >
-              {busy ? "Applying…" : "Apply validated marks"}
+              {t(busy ? "Applying…" : "Apply validated marks")}
             </button>
             <p className="tiny">
-              All validated changes save together. Importing does not submit
-              papers, approve marks or publish results.
+              {t(
+                "All validated changes save together. Importing does not submit papers, approve marks or publish results.",
+              )}
             </p>
           </section>
         )}

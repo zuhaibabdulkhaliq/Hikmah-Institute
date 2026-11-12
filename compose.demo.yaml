@@ -66,7 +66,7 @@ services:
         "0.0.0.0",
       ]
     ports:
-      - "127.0.0.1:${HIKMAH_DEMO_PORT:-3000}:3000"
+      - "${HIKMAH_DEMO_BIND:-127.0.0.1}:${HIKMAH_DEMO_PORT:-3000}:3000"
     healthcheck:
       test:
         [

@@ -1,0 +1,79 @@
+# Institute hosting: managed PostgreSQL + one app server. No demo seed.
+name: hikmah-institute
+services:
+  migrate:
+    image: hikmah-app:local
+    environment:
+      DATABASE_URL: ${MIGRATION_DATABASE_URL:?Set the managed PostgreSQL migration connection with verified TLS}
+    command: ["node", "--import", "tsx", "scripts/migrate.ts"]
+    restart: "no"
+  api:
+    image: hikmah-app:local
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      DATABASE_URL: ${DATABASE_URL:?Set the restricted application PostgreSQL connection with verified TLS}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set 32+ random characters}
+      BETTER_AUTH_URL: ${PUBLIC_ORIGIN:?Set the public HTTPS origin}
+      WEB_ORIGIN: ${PUBLIC_ORIGIN:?Set the public HTTPS origin}
+      PDF_PYTHON: /opt/pdf/bin/python
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+  web:
+    image: hikmah-app:local
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    command:
+      [
+        "node_modules/.bin/pnpm",
+        "--filter",
+        "@hikmah/web",
+        "start",
+        "--hostname",
+        "0.0.0.0",
+      ]
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+  https:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      SITE_HOST: ${SITE_HOST:?Set your institute hostname without https://}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+volumes:
+  caddy-data:
+  caddy-config:

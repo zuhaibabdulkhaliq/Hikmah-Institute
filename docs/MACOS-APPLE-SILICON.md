@@ -112,7 +112,7 @@ Run the full automated checks from Terminal in the same folder:
 bash scripts/demo.sh test
 ```
 
-The command rebuilds the current source, runs lint/type checks, runs the database/PDF integration tests, and builds the web/API applications. It returns to the prompt with exit code zero on success. You should see 44 tests pass and no test failures. The test runner creates and drops its own temporary database, preserving the demo database. This command does not run native-device or browser automation; use the manual browser steps above on your Mac.
+The command rebuilds the current source, runs lint/type checks, runs the database/PDF integration tests, and builds the web/API applications. It returns to the prompt with exit code zero on success. You should see 52 tests pass and no test failures. The test runner creates and drops its own temporary database, preserving the demo database. This command does not run native-device or browser automation; use the manual browser steps above on your Mac.
 
 ## 6. Status, stopping and starting again
 
@@ -170,3 +170,7 @@ For a hosted installation, follow [deployment and recovery](DEPLOYMENT.md) and t
 ## Verification scope
 
 The Docker demo and full check command were verified on the managed Linux x86_64 Docker engine. The image uses multi-architecture Node/PostgreSQL base images and the configuration does not force Intel; Docker on an M4 selects ARM64 images and dependencies. A physical M4/macOS run and native-device E2E have not been performed here.
+
+## English/Urdu and phones
+
+Use **English / اردو** on the sign-in page or web header. Fresh demos use the stable password described in [the release guide](INSTITUTE_RELEASE.md); existing `.env.demo` values remain unchanged. To test the native app on both iPhone and Android using Docker, follow [Mobile testing](MOBILE_TESTING.md). For institute hosting, use [Hosting](HOSTING.md).

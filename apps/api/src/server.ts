@@ -19,6 +19,7 @@ import { exams } from "./exams.ts";
 import { results } from "./results.ts";
 import { schemeRevisions } from "./scheme-revisions.ts";
 import { operations } from "./operations.ts";
+import { requestSession } from "./security.ts";
 export async function buildApp() {
   const app = Fastify({
     logger: {
@@ -33,7 +34,17 @@ export async function buildApp() {
     credentials: true,
   });
   await app.register(helmet);
-  await app.register(rateLimit, { max: 300, timeWindow: "1 minute" });
+  await app.register(rateLimit, {
+    max: (_req, key) => (key.startsWith("user:") ? 1000 : 300),
+    timeWindow: "1 minute",
+    keyGenerator: async (req) => {
+      const session =
+        req.headers.authorization || req.headers.cookie
+          ? await requestSession(req)
+          : null;
+      return session ? `user:${session.user.id}` : `ip:${req.ip}`;
+    },
+  });
   app.addHook("onRequest", async (req, reply) => {
     if (req.method !== "GET" && req.headers.cookie) {
       const origin = req.headers.origin;
@@ -75,7 +86,13 @@ export async function buildApp() {
   app.route({
     method: ["GET", "POST"],
     url: "/api/auth/*",
-    config: { rateLimit: { max: 20, timeWindow: "1 minute" } },
+    config: {
+      rateLimit: {
+        max: 20,
+        timeWindow: "1 minute",
+        keyGenerator: (req) => req.ip,
+      },
+    },
     handler: async (req, reply) => {
       const headers = new Headers();
       for (const [k, v] of Object.entries(req.headers)) {

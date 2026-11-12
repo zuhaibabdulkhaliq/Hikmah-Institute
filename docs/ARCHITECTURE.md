@@ -1,5 +1,9 @@
 # Architecture and API
 
+The English/Urdu catalogue lives in `packages/ui-tokens/src/messages.ts`, with formatting-safe lookup in `i18n.ts` and platform language providers. Web uses browser-local preferences and document RTL; native uses secure preferences and per-view/text direction. Keep machine option values, IDs, imported/exported columns and approved policy payloads unchanged when adding translations.
+
+`PUT /v1/me/password` verifies the owner's current salted-scrypt credential, updates its hash and revokes all sessions. Existing administrator resets remain separately authorized. General request limits use verified user IDs with anonymous-IP fallback; authentication endpoints retain an IP-specific limit. Native bearer clients omit cookies and validate a remembered server origin; changing it discards the old local token. See [the release guide](INSTITUTE_RELEASE.md) and [hosting configuration](HOSTING.md).
+
 ## Workspace
 
 - `apps/web`: Next.js App Router staff portal. All sensitive data loads from the authenticated API. Same-origin rewrites keep the Better Auth cookie HttpOnly; cookie writes require an exact trusted Origin.

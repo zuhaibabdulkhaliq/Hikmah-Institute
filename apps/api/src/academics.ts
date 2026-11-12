@@ -178,9 +178,9 @@ export function academics(app: FastifyInstance) {
     admin(a);
     const data = z
       .object({
-        name: text,
-        name_ur: text,
-        official_display_name: text,
+        name: text.trim(),
+        name_ur: text.trim(),
+        official_display_name: text.trim(),
         timezone: z.string().refine((x) => {
           try {
             Intl.DateTimeFormat("en", { timeZone: x });

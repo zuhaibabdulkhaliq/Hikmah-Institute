@@ -23,10 +23,20 @@ export type Actor = {
   today: string;
   timezone: string;
 };
+const sessions = new WeakMap<
+  FastifyRequest,
+  ReturnType<typeof auth.api.getSession>
+>();
+export function requestSession(req: FastifyRequest) {
+  let session = sessions.get(req);
+  if (!session) {
+    session = auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+    sessions.set(req, session);
+  }
+  return session;
+}
 export async function actor(req: FastifyRequest): Promise<Actor> {
-  const session = await auth.api.getSession({
-    headers: fromNodeHeaders(req.headers),
-  });
+  const session = await requestSession(req);
   check(session, "Sign in required", 401);
   const { rows } = await pool.query(
     `SELECT u.*,r.role FROM app_users u LEFT JOIN organization_roles r ON r.user_id=u.id AND r.is_active=true WHERE u.auth_subject=$1 AND u.active=true`,

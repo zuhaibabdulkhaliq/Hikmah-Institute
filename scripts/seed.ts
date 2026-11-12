@@ -94,7 +94,7 @@ try {
           ],
         );
       console.log(
-        "Synthetic seed retained; missing Mushrif demo account added without changing existing passwords",
+        "Synthetic data and existing passwords retained; missing demo roles added only when needed",
       );
       return;
     }

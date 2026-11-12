@@ -18,7 +18,7 @@ export function createClient(
     const bearer = await token?.();
     const response = await fetch(base + path, {
       ...options,
-      credentials: "include",
+      credentials: token ? "omit" : "include",
       cache: "no-store",
       headers: {
         "Content-Type": "application/json",
@@ -74,3 +74,47 @@ export type Identity = {
   teachingSections: string[];
   sectionAssignments: { sectionId: string; role: string }[];
 };
+
+export function normalizeServerURL(
+  value: string,
+  allowLocalHTTP = false,
+): string {
+  let url: URL;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    throw new Error(
+      "Enter the institute server address, for example https://school.example.org",
+    );
+  }
+  if (
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash ||
+    (url.pathname !== "/" && url.pathname !== "")
+  )
+    throw new Error(
+      "Use only the server address, without a page path, password or query.",
+    );
+  const host = url.hostname;
+  const ip = /^\d+\.\d+\.\d+\.\d+$/.test(host)
+    ? host.split(".").map(Number)
+    : null;
+  const privateIP =
+    !!ip &&
+    ip.every((n) => n <= 255) &&
+    (ip[0] === 10 ||
+      ip[0] === 127 ||
+      (ip[0] === 192 && ip[1] === 168) ||
+      (ip[0] === 172 && ip[1] >= 16 && ip[1] <= 31));
+  const local = host === "localhost" || host === "[::1]" || privateIP;
+  if (
+    url.protocol !== "https:" &&
+    !(allowLocalHTTP && url.protocol === "http:" && local)
+  )
+    throw new Error(
+      "Use HTTPS for the institute server. Local HTTP is available only during development.",
+    );
+  return url.origin;
+}
