@@ -5,13 +5,17 @@ The repository contains a native Expo/React Native app in `apps/mobile`. Opening
 ## Easiest first test on your M4 Mac: Docker + Expo Go
 
 1. Download the updated source. Preserve your original `.env.demo` and local `docker-packages` font archives. Start Docker Desktop.
-2. Install **Expo Go** from Apple's App Store on iPhone and Google Play on Android. Your app uses **Expo SDK 58**. The Expo Go client must support that SDK; if it does not, use the development/preview build section below rather than changing package versions at random.
+2. Install **Expo Go** from Apple's App Store on iPhone and Google Play on Android. Create a free account at <https://expo.dev/signup> if needed, then sign in to Expo Go. The iPhone client requires the same Expo account to be signed in on the phone and in Expo CLI. This is separate from your Hikmah administrator/staff account. Your app uses **Expo SDK 58**. The Expo Go client must support that SDK; if it does not, use the development/preview build section below rather than changing package versions at random.
 3. Connect the Mac and both phones to the same trusted Wi-Fi. Allow Local Network access when iOS asks. Guest Wi-Fi, VPNs, client isolation or a firewall may prevent direct connection.
-4. In Terminal, inside the project folder, run:
+4. In Terminal, inside the project folder, first sign Expo CLI in through Docker. If this is a new checkout without an app image, run `bash scripts/demo.sh start` once first.
 
    ```sh
+   bash scripts/mobile-demo.sh login
+   bash scripts/mobile-demo.sh whoami
    bash scripts/mobile-demo.sh
    ```
+
+   The login prompts for your **Expo** username/email and password, including a two-factor code if enabled. Enter them privately in Terminal; do not put passwords in commands or send them in chat. `whoami` should show the same Expo username used in Expo Go.
 
    Docker supplies Node and Metro; Homebrew, a host Node installation, Xcode and Android Studio are not required for this Expo Go path. The script builds/starts the demo, exposes port 3000 on your LAN, and starts Metro on port 8081. It displays your Mac's **Phone server address** and an Expo QR code. Keep Terminal open.
 
@@ -30,6 +34,14 @@ Replace the example with your actual Mac IPv4 address. The sign-in server addres
 
 To stop Metro, press **Control+C**. To return the website to Mac-only access, run `bash scripts/demo.sh start` normally, without `HIKMAH_DEMO_BIND`. To stop the demo, run `bash scripts/demo.sh stop`. Neither removes the database.
 
+## Expo login and manifest troubleshooting
+
+If iPhone reports **“You need to be signed in to Expo Go and Expo CLI”**, stop Metro with Control+C, sign in to Expo Go on the phone, then run the three Docker commands above with the same Expo account. Use the updated `scripts/mobile-demo.sh`: older versions force `EXPO_OFFLINE=1`, which prevents Expo CLI from resolving the signed-in account even after a login. The corrected launcher enables online access and keeps Expo's private session/cache in the separate Docker volume `hikmah-mobile-expo-home`, outside Git and application image layers. Keep Internet access available for Expo account/manifest requests as well as local Wi-Fi connectivity.
+
+To change the Expo account, run `bash scripts/mobile-demo.sh logout`, then `login` again. This logs out Expo CLI only; it does not change Hikmah passwords or student data. `HIKMAH_EXPO_HOME_VOLUME` can choose a different private Docker home volume if multiple operators share this Mac. Treat the Docker volume as private account data; do not share/export it. The database backup helper backs up institute records, not this Expo login.
+
+`TypeScript: tsconfig.json#include ... updated` is Expo configuring generated type paths. `Android Bundled ...` means Metro produced the bundle, not that every device workflow passed. Manifest-asset warnings and a redirect for runtime `custom` are separate messages: use the `--go` launcher/Expo Go QR, restart after login, and inspect any warning that remains. Signing in addresses the reported iOS account requirement; it does not prove a remaining asset/network issue has been resolved.
+
 ## If you prefer host Node
 
 Install Node.js 24 LTS for Apple silicon from nodejs.org. Then, in the project root:
@@ -38,6 +50,7 @@ Install Node.js 24 LTS for Apple silicon from nodejs.org. Then, in the project r
 corepack enable
 corepack prepare pnpm@10.28.2 --activate
 pnpm install --frozen-lockfile
+pnpm --filter @hikmah/mobile exec expo login
 HIKMAH_DEMO_BIND=0.0.0.0 bash scripts/demo.sh start
 EXPO_PUBLIC_API_URL=http://192.168.1.20:3000 pnpm dev:mobile -- --lan
 ```
