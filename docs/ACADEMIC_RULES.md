@@ -53,7 +53,7 @@ Use **Initialize selected session** to reuse the class curriculum in each exam s
 
 ## Marks, passing and positions
 
-Every subject/student/session mark has independent **Exam leave** and **Given on time** fields. Leave/concession makes On time false. Unconfirmed timing stays unknown; missing flags never imply an on-time sitting. A pupil may later receive graded marks after leave or a concession, but remains ineligible for a position in that session. Imports retain existing timing/leave metadata; broader Excel/import improvements remain deferred as requested.
+Every subject/student/session mark has independent **Exam leave** and **Given on time** fields. Leave/concession makes On time false. Unconfirmed timing stays unknown; missing flags never imply an on-time sitting. A pupil may later receive graded marks after leave or a concession, but remains ineligible for a position in that session. The [session CSV workflow](RESULT_SHEET_CSV.md) preserves existing timing/leave metadata by default; optional explicit columns support entering or correcting those facts. Blank mark cells preserve existing data, scored zero stays distinct, and atomic apply requires validation and acknowledgement of replacements. Formula/excess/stale/conflicting uploads are rejected. Importing never approves or publishes a result.
 
 The overall institutional pass minimum is **40%**, inclusive. No per-paper pass threshold has been introduced. Attendance is displayed independently and does not add to or subtract from exam marks.
 
@@ -84,4 +84,4 @@ Startup applies migration `010_institute_academic_rules.sql`. It preserves previ
 
 Fresh demos include `admin@hikmah.example`, `admin2@hikmah.example`, `mushrif@hikmah.example`, `teacher@hikmah.example`, `subject@hikmah.example` and `ameer@hikmah.example`. Use the private generated `HIKMAH_DEMO_PASSWORD`. On upgraded demo volumes existing teacher assignments are retained; `subject@hikmah.example` provides the unambiguous subject-only example. The idempotent synthetic seed adds missing demo roles without resetting existing passwords or restoring revoked assignments.
 
-The verification command runs lint, root/web/mobile types, PostgreSQL/PDF/domain tests and web/API production builds. The browser smoke checks all ten administrator views at laptop, iPad and phone widths and verifies Ameer/Mushrif/subject-teacher navigation. Native iOS/Android bundle export is separate from physical-device E2E; institute staging, real-device and operational acceptance remain rollout work.
+The verification command runs lint, root/web/mobile types, PostgreSQL/PDF/domain tests and web/API production builds. The browser smoke checks all eleven administrator views at laptop, iPad and phone widths and verifies Ameer/Mushrif/subject-teacher navigation. Native iOS/Android bundle export is separate from physical-device E2E; institute staging, real-device and operational acceptance remain rollout work.

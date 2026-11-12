@@ -11,6 +11,7 @@ import {
 import { sumMarks, institutePolicy } from "@hikmah/domain";
 import { AuthFrame, Brand, Icon } from "../components/workspace-ui";
 import { AcademicCalendarPage } from "../components/academic-calendar";
+import { SessionResultSheet } from "../components/session-result-sheet";
 import {
   createClient,
   type Identity,
@@ -504,6 +505,11 @@ export default function Home() {
               {...common}
               admin={!!admin}
               managedSections={me.managedSections}
+              onSessionImport={(classId, sessionId) => {
+                setSection(classId);
+                setCycle(sessionId);
+                setView("Results & reports");
+              }}
             />
           )}
           {view === "Policies" && <Policies {...common} />}
@@ -1301,7 +1307,12 @@ function Marks({
   admin,
   setMessage,
   managedSections,
-}: Common & { admin: boolean; managedSections: string[] }) {
+  onSessionImport,
+}: Common & {
+  admin: boolean;
+  managedSections: string[];
+  onSessionImport: (section: string, cycle: string) => void;
+}) {
   const [markReason, setMarkReason] = useState("");
   const [csv, setCsv] = useState("");
   const [imported, setImported] = useState<any>(null);
@@ -1344,6 +1355,16 @@ function Marks({
       </div>
       {data && (
         <>
+          {canManage && (
+            <button
+              className="secondary"
+              onClick={() =>
+                onSessionImport(data.paper.section_id, data.paper.exam_cycle_id)
+              }
+            >
+              Import a full class CSV / open session sheet
+            </button>
+          )}
           <label>
             Change or import reason
             <input
@@ -1690,6 +1711,8 @@ function Results({
   admin,
   setMessage,
 }: Common & { admin: boolean }) {
+  const [performanceRefresh, setPerformanceRefresh] = useState(0);
+  const [publishedRefresh, setPublishedRefresh] = useState(0);
   const [report, setReport] = useState<any>(null),
     [runs, setRuns] = useState<any[]>([]),
     [reason, setReason] = useState("");
@@ -1700,9 +1723,26 @@ function Results({
   useEffect(() => {
     void run(load);
   }, [section, cycle]);
+  const selectedRuns = runs.filter(
+    (r) => r.section_id === section && r.exam_cycle_id === cycle,
+  );
   return (
     <>
-      <StudentPerformance section={section} cycle={cycle} run={run} />
+      <SessionResultSheet
+        key={publishedRefresh}
+        section={section}
+        cycle={cycle}
+        onImported={() => {
+          setReport(null);
+          setPerformanceRefresh((n) => n + 1);
+        }}
+      />
+      <StudentPerformance
+        key={performanceRefresh}
+        section={section}
+        cycle={cycle}
+        run={run}
+      />
       <div className="panel">
         <h2>Preflight & publication</h2>
         <p>
@@ -1790,6 +1830,8 @@ function Results({
                         }),
                       });
                       await load();
+                      setPublishedRefresh((n) => n + 1);
+                      setPerformanceRefresh((n) => n + 1);
                       setMessage(
                         "Immutable result revision and PDFs published.",
                       );
@@ -1805,30 +1847,32 @@ function Results({
       </div>
       <div className="panel">
         <h2>Publication archive</h2>
-        {runs
-          .filter((r) => r.section_id === section)
-          .map((r) => (
-            <div key={r.id} className="toolbar">
-              <span className="tag">
-                Revision {r.revision} · {r.state}
-              </span>
-              <a href={`/v1/results/${r.id}/sectionsheet.pdf`}>Class PDF ↓</a>
-              <a href={`/v1/results/${r.id}/export.csv`}>CSV ↓</a>
-              <details>
-                <summary>Individual report cards</summary>
-                {r.students?.map((s: any) => (
-                  <p key={s.enrollmentId}>
-                    <a
-                      href={`/v1/results/${r.id}/students/${s.enrollmentId}.pdf`}
-                    >
-                      {s.name} · A4 PDF ↓
-                    </a>
-                  </p>
-                ))}
-              </details>
-            </div>
-          ))}
-        {!runs.length && <p className="empty">No published results yet.</p>}
+        {selectedRuns.map((r) => (
+          <div key={r.id} className="toolbar">
+            <span className="tag">
+              Revision {r.revision} · {r.state}
+            </span>
+            <a href={`/v1/results/${r.id}/sectionsheet.pdf`}>Class PDF ↓</a>
+            <a href={`/v1/results/${r.id}/export.csv`}>CSV ↓</a>
+            <details>
+              <summary>Individual report cards</summary>
+              {r.students?.map((s: any) => (
+                <p key={s.enrollmentId}>
+                  <a
+                    href={`/v1/results/${r.id}/students/${s.enrollmentId}.pdf`}
+                  >
+                    {s.name} · A4 PDF ↓
+                  </a>
+                </p>
+              ))}
+            </details>
+          </div>
+        ))}
+        {!selectedRuns.length && (
+          <p className="empty">
+            No published results for this class and exam session yet.
+          </p>
+        )}
       </div>
     </>
   );

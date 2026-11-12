@@ -33,6 +33,7 @@ try {
     "tests/api.test.ts",
     "tests/domain.test.ts",
     "tests/calendar.test.ts",
+    "tests/session-sheet.test.ts",
     "tests/zz-academic-rules.test.ts",
   ]);
 } finally {

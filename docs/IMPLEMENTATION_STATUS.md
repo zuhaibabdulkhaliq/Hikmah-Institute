@@ -1,5 +1,23 @@
 # Implementation and verification record
 
+## 12 November 2026 — session CSV marks entry and Urdu result sheets
+
+Added a complete class/session workflow under **Results & reports → Session results sheet**, with a shortcut from managed paper entry. Templates contain student numbers, rolls, names, attendance and separately coded paper/maxima columns; only paper marks are blank. Optional exam-leave/on-time columns preserve existing facts and require explicit confirmation for new on-time completion. Uploaded total, percentage, grade and position cells are never applied.
+
+Migration `012_session_mark_imports.sql` adds private manifests and import batches. Manifests bind class/session, current scheme/roster and downloaded mark versions. Preview validates reference and protected identity rows, exact paper headings, numeric ranges/precision, UTF-8 structure, duplicate/missing/foreign students and flags. Formula-like exported text is escaped. Apply is creator-bound, rechecks current permissions/year/paper workflow/versions and uses one transaction for the batch. Existing entries require acknowledgement; blank marks preserve data and a scored zero remains distinct. Import/apply actions and normalized mark changes are audited. Templates cannot be passed to the unrelated student-import workflow.
+
+Each session now offers a wide CSV and Urdu landscape PDF matching the provided class-sheet structure: roll/name/attendance, every paper and maximum, total, percentage, approved grade and position. Rows use numeric roll order. Repeated subject labels keep separate paper codes. Very wide schemes use repeated-identity panels; fractional maxima use exact decimal sums. Drafts clearly identify unresolved cells and partial totals, and never derive grade bands from the sample. New publications freeze program/level labels and the template version. Original archived PDFs and previously published snapshots remain unchanged. The archive filters the selected exam session, and successful publication refreshes the view to the new frozen revision.
+
+Verification:
+
+- Full Docker check: lint, API/shared/web/mobile TypeScript, all migrations, **42 tests passed, 0 failed, 0 skipped**, PostgreSQL/PDF integration and production web/API builds.
+- Six added integration tests cover blank template structure and numeric roll order; zero and Urdu numerals; formula/score/header/identity validation; class/session/actor/role isolation; explicit timing/leave and concession preservation; stale files, workflow locks, competing transactions and rollback; wide CSV/PDF output and exact fractional maxima; and byte-for-byte archived-PDF preservation after a CSV correction.
+- Real Chromium file workflow: download a generated roster template, upload invalid then corrected UTF-8 files, download validation errors, review/apply 99 entries, download the class CSV/PDF, preserve unfilled students, then explicitly acknowledge and apply a correction.
+- Browser layouts checked at 1440/1024/820/768/390/320px. Result columns scroll within the panel while student identities remain available. The existing portal smoke also passed across all eleven views at these widths, including Ameer/Mushrif/subject-only navigation, individual PDF download, keyboard navigation, sign-out and activation. Its seed-paper selection is explicit so additional synthetic classes cannot affect the fixture.
+- Synthetic A3 PDFs were rendered, text-extracted and visually inspected for Urdu shaping, paper order, repeated Tafsir labels, maxima, zero/missing distinction and grade/position columns. Examples and screenshots are linked from [the upload guide](RESULT_SHEET_CSV.md).
+
+The [CSV and result-sheet guide](RESULT_SHEET_CSV.md) documents the operating workflow. Uploading changes working marks, not approvals or publications. Institute identity, grade-band review/approval, actual attendance/paper review and official publication remain explicit operator actions. Physical Mac/Safari/device acceptance and the existing production rollout/recovery checks remain outside the managed Linux/Chromium verification. No real student data from the reference image was copied into fixtures, and no official institute result or public deployment was published by this implementation task.
+
 ## 11 November 2026 — flexible academic calendar
 
 Added a separate **Academic calendar** page with academic-year/program/level filters, individually selectable sections, saved 0–7-day teaching weeks, schedule copying, effective dates, shared vacations, extra teaching days, instructional events without attendance, and restoration of exceptions. Administrators manage all classes; Mushrif manage their assigned sections. Ameer and subject-only staff cannot edit calendars.

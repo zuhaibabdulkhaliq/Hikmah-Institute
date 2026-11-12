@@ -1,4 +1,6 @@
 import { markImport } from "./mark-import.ts";
+import { sessionResults } from "./session-results.ts";
+import { sessionMarkImport } from "./session-mark-import.ts";
 import { calendars } from "./calendar.ts";
 import { openapi } from "./openapi.ts";
 import Fastify from "fastify";
@@ -107,5 +109,7 @@ export async function buildApp() {
   operations(app);
   schemeRevisions(app);
   markImport(app);
+  sessionResults(app);
+  sessionMarkImport(app);
   return app;
 }

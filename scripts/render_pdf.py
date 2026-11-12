@@ -1,6 +1,16 @@
 import json,sys,html
 from weasyprint import HTML
 s=json.load(sys.stdin)
+if not s.get('enrollment'):
+ from result_sheet import result_sheet_html,maximum
+ papers=s['scheme']['papers']
+ panels=[]
+ for offset in range(0,max(1,len(papers)),14):
+  part={**s,'scheme':{**s['scheme'],'papers':papers[offset:offset+14]},'totalMaximum':maximum(papers)}
+  if len(papers)>14: part['panelCaption']='Papers '+str(offset+1)+'–'+str(min(offset+14,len(papers)))+' of '+str(len(papers))+'. Totals include every paper.'
+  panels.append('<section style="break-before:'+('page' if offset else 'auto')+'">'+result_sheet_html(part)+'</section>')
+ sys.stdout.buffer.write(HTML(string=''.join(panels)).write_pdf())
+ sys.exit(0)
 e=lambda v:html.escape(str(v if v is not None else '—'))
 n=lambda v:'<span dir="ltr" style="unicode-bidi:isolate;display:inline-block;font-family:DejaVu Sans">'+e(v)+'</span>'
 outcome=lambda r:'PASS' if r.get('passing') is True else 'FAIL' if r.get('passing') is False else 'UNRESOLVED'

@@ -651,13 +651,21 @@ export function StudentPerformance({
           </a>
           <a
             className="action-link"
-            href={`/v1/sections/${section}/performance.pdf${period === "SESSION" ? `?cycleId=${cycle}` : ""}`}
+            href={
+              period === "SESSION"
+                ? `/v1/exam-cycles/${cycle}/sections/${section}/result-sheet.pdf`
+                : `/v1/sections/${section}/performance.pdf`
+            }
           >
             Download class report PDF
           </a>
           <a
             className="action-link"
-            href={`/v1/sections/${section}/performance.csv${period === "SESSION" ? `?cycleId=${cycle}` : ""}`}
+            href={
+              period === "SESSION"
+                ? `/v1/exam-cycles/${cycle}/sections/${section}/result-sheet.csv`
+                : `/v1/sections/${section}/performance.csv`
+            }
           >
             Download class report CSV
           </a>

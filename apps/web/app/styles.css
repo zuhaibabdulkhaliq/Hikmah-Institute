@@ -11,6 +11,151 @@
     0 8px 32px rgba(39, 94, 139, 0.055), inset 0 1px 0 rgba(255, 255, 255, 0.95);
   --radius: 24px;
 }
+.session-results-panel {
+  min-width: 0;
+}
+.session-results-panel .panelhead {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.session-results-panel .toolbar label {
+  min-width: 0;
+  max-width: 100%;
+}
+.session-sheet-title {
+  display: grid;
+  gap: 8px;
+  padding: 20px;
+  text-align: center;
+  color: #14146a;
+  border: 1px solid var(--line);
+  border-radius: 18px 18px 0 0;
+  background: white;
+  margin-top: 20px;
+}
+.session-sheet-title strong {
+  font-size: 24px;
+}
+.session-sheet-title span {
+  font-size: 16px;
+}
+.session-sheet-scroll {
+  border-radius: 0 0 16px 16px;
+}
+.session-sheet-table {
+  min-width: 1250px;
+  width: 100%;
+  background: white;
+  border-collapse: collapse;
+  font-family: "Noto Naskh Arabic", sans-serif;
+}
+.session-sheet-table th,
+.session-sheet-table td {
+  border: 1px solid #555;
+  text-align: center;
+  padding: 12px 8px;
+}
+.session-sheet-table th {
+  background: #000;
+  color: white;
+  white-space: normal;
+  font-size: 14px;
+}
+.session-sheet-table th.identity {
+  background: #fff;
+  color: #111;
+}
+.session-sheet-table th small {
+  display: block;
+  color: #ccc;
+  font-size: 10px;
+  margin-top: 6px;
+}
+.session-sheet-table .student-name {
+  min-width: 160px;
+  text-align: right;
+}
+.session-sheet-table .identity:first-child,
+.session-sheet-table tbody td:first-child {
+  position: sticky;
+  right: 0;
+  min-width: 52px;
+  width: 52px;
+  z-index: 2;
+  background: white;
+  color: #111;
+}
+.session-sheet-table .identity:nth-child(2),
+.session-sheet-table td.student-name {
+  position: sticky;
+  right: 52px;
+  min-width: 180px;
+  max-width: 210px;
+  width: 180px;
+  z-index: 2;
+  background: white;
+  color: #111;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.session-sheet-table thead .identity {
+  z-index: 3;
+}
+.session-sheet-table td small {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+}
+.session-sheet-table td.unresolved {
+  background: #ff3030;
+  color: #160000;
+}
+.session-sheet-table td.derived {
+  color: #17176c;
+  font-weight: 700;
+}
+.session-import {
+  margin-top: 24px;
+}
+.session-import-preview {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.session-import-ack {
+  padding: 16px;
+  margin: 20px 0;
+  border: 1px solid #d8bd82;
+  border-radius: 14px;
+  background: #fff8e9;
+}
+@media (max-width: 600px) {
+  .session-results-panel .toolbar {
+    align-items: stretch;
+  }
+  .session-results-panel .toolbar > label {
+    width: 100%;
+  }
+  .session-results-panel .action-link {
+    max-width: 100%;
+    white-space: normal;
+  }
+  .session-sheet-title strong {
+    font-size: 20px;
+  }
+  .session-sheet-table .identity:first-child,
+  .session-sheet-table tbody td:first-child {
+    min-width: 44px;
+    width: 44px;
+  }
+  .session-sheet-table .identity:nth-child(2),
+  .session-sheet-table td.student-name {
+    right: 44px;
+    min-width: 150px;
+    max-width: 150px;
+    width: 150px;
+  }
+}
 * {
   box-sizing: border-box;
 }

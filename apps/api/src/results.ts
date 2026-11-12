@@ -13,7 +13,7 @@ import {
   capabilities,
   type Actor,
 } from "./security.ts";
-import { loadScheme } from "./exams.ts";
+import { loadScheme, examRoster } from "./exams.ts";
 import { eligible, replay } from "./attendance.ts";
 import {
   schemeSchema,
@@ -22,7 +22,7 @@ import {
   rank,
   attendancePercent,
   uuid,
-  csvCell,
+  resultSheetCSV,
   type Mark,
   positionEligibility,
 } from "../../../packages/domain/src/index.ts";
@@ -30,7 +30,12 @@ const hash = (v: unknown) =>
   createHash("sha256")
     .update(Buffer.isBuffer(v) ? v : JSON.stringify(v))
     .digest("hex");
-async function preflight(db: DB, a: Actor, cycle: string, section: string) {
+export async function resultPreflight(
+  db: DB,
+  a: Actor,
+  cycle: string,
+  section: string,
+) {
   await scope(db, a, section, "results");
   const errors: string[] = [];
   const activeYear = await db.query(
@@ -77,23 +82,17 @@ async function preflight(db: DB, a: Actor, cycle: string, section: string) {
     )
   ).rows[0];
   check(cycleRow, "Cycle does not belong to section year");
-  let enrolled = (
-    await db.query(
-      "SELECT e.*,e.joined_on::text AS joined_date,e.left_on::text AS left_date,s.full_name,s.student_number FROM enrollments e JOIN students s ON s.id=e.student_id WHERE e.section_id=$1 ORDER BY e.roll_number",
-      [section],
-    )
-  ).rows;
-  if (policy.success && window) {
-    enrolled = enrolled.filter(
-      (e) =>
-        e.joined_date <= window.finish &&
-        (e.left_date === null ||
-          e.left_date >=
-            (policy.data.eligibility === "ACTIVE_AT_WINDOW_END"
-              ? window.finish
-              : window.start)),
-    );
-  }
+  const enrolled = await examRoster(
+    db,
+    section,
+    policy.success && window
+      ? {
+          start: window.start,
+          finish: window.finish,
+          eligibility: policy.data.eligibility,
+        }
+      : undefined,
+  );
   if (!enrolled.length)
     errors.push(
       "No eligible enrolled learners in the configured reporting window",
@@ -240,6 +239,19 @@ async function preflight(db: DB, a: Actor, cycle: string, section: string) {
     ? rank(students, policy.data.ranking)
     : students;
   const snapshot = {
+    templateVersion: "HIKMAH_RESULT_SHEET_V2",
+    program: (
+      await db.query(
+        "SELECT p.* FROM programs p JOIN sections s ON s.program_id=p.id WHERE s.id=$1",
+        [section],
+      )
+    ).rows[0],
+    level: (
+      await db.query(
+        "SELECT l.* FROM levels l JOIN sections s ON s.level_id=l.id WHERE s.id=$1",
+        [section],
+      )
+    ).rows[0],
     institute: (
       await db.query("SELECT * FROM organizations WHERE id=$1", [a.org])
     ).rows[0],
@@ -271,7 +283,7 @@ async function preflight(db: DB, a: Actor, cycle: string, section: string) {
     snapshot,
   };
 }
-function render(snapshot: unknown): Promise<Buffer> {
+export function renderResultPDF(snapshot: unknown): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const child = spawn(
       process.env.PDF_PYTHON ?? "python3",
@@ -303,7 +315,7 @@ export function results(app: FastifyInstance) {
     const a = await actor(req),
       p = req.params as any;
     return transaction((db) =>
-      preflight(db, a, uuid.parse(p.cycle), uuid.parse(p.section)),
+      resultPreflight(db, a, uuid.parse(p.cycle), uuid.parse(p.section)),
     );
   });
   app.post("/v1/results/:cycle/:section/publish", async (req, reply) => {
@@ -322,7 +334,7 @@ export function results(app: FastifyInstance) {
         await db.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
           cycle + section,
         ]);
-        const report = await preflight(db, a, cycle, section);
+        const report = await resultPreflight(db, a, cycle, section);
         check(report.canPublish, report.blockingErrors.join("; "));
         check(
           report.validationHash === d.validationHash,
@@ -369,7 +381,7 @@ export function results(app: FastifyInstance) {
         ])
           documents.push({
             key,
-            pdf: await render({
+            pdf: await renderResultPDF({
               ...snapshot,
               ...(key !== "class" ? { enrollment: key } : {}),
             }),
@@ -494,7 +506,7 @@ export function results(app: FastifyInstance) {
     check(a.admin || c.managedSections.length, "Result access denied", 403);
     const runs = (
       await pool.query(
-        "SELECT id,section_id,revision,state,published_at,document_snapshot->'students' AS students FROM result_runs ORDER BY published_at DESC LIMIT 200",
+        "SELECT id,section_id,exam_cycle_id,revision,state,published_at,document_snapshot->'students' AS students FROM result_runs ORDER BY published_at DESC LIMIT 200",
       )
     ).rows;
     const visible = [];
@@ -550,35 +562,10 @@ export function results(app: FastifyInstance) {
     ).rows[0];
     check(run, "Result unavailable", 404);
     await scope(pool, a, run.section_id, "results");
-    const rows = run.document_snapshot.students.map((s: any) =>
-      [
-        s.studentNumber,
-        s.name,
-        s.total,
-        s.possible,
-        s.displayPercent,
-        s.grade,
-        s.rank,
-        s.passing,
-        s.attendance?.present,
-        s.attendance?.absent,
-        s.attendance?.half,
-        s.attendance?.leave,
-        s.attendance?.displayPercent,
-      ]
-        .map(csvCell)
-        .join(","),
-    );
     await audit(pool, a, "EXPORT", "result_runs", id, null, { format: "csv" });
     return reply
       .type("text/csv; charset=utf-8")
       .header("Content-Disposition", 'attachment; filename="results.csv"')
-      .send(
-        "\uFEFF" +
-          [
-            "student_number,name,total,possible,percent,grade,rank,passing,present,absent,half,leave,attendance_percent",
-            ...rows,
-          ].join("\r\n"),
-      );
+      .send(resultSheetCSV(run.document_snapshot));
   });
 }

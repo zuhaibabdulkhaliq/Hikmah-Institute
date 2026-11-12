@@ -381,7 +381,7 @@ test("Milestones C–E: complete attendance, stale versions, atomic retries, pub
   await writeFile(".data/reports/test-class.pdf", pdf.rawPayload);
   await writeFile(".data/reports/test-individual.pdf", individual.rawPayload);
   const pdfText = execFileSync("pdftotext", ["-layout", "-", "-"], {
-    input: pdf.rawPayload,
+    input: individual.rawPayload,
     encoding: "utf8",
   }).replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "");
   assert(

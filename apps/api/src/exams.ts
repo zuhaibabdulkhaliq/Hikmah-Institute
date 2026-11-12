@@ -49,6 +49,33 @@ export async function loadScheme(db: DB, cycle: string, section: string) {
     })),
   };
 }
+export async function examRoster(
+  db: DB,
+  section: string,
+  window?: { start: string; finish: string; eligibility: string },
+) {
+  const roster = (
+    await db.query(
+      `SELECT e.*,e.joined_on::text AS joined_date,e.left_on::text AS left_date,
+ COALESCE(NULLIF(s.full_name_ur,''),s.full_name) AS full_name,s.student_number
+ FROM enrollments e JOIN students s ON s.id=e.student_id WHERE e.section_id=$1
+ AND ($2::date IS NULL OR (e.joined_on<=$3::date AND (e.left_on IS NULL OR e.left_on>=CASE WHEN $4='ACTIVE_AT_WINDOW_END' THEN $3::date ELSE $2::date END)))
+ ORDER BY e.roll_number,e.id`,
+      [
+        section,
+        window?.start ?? null,
+        window?.finish ?? null,
+        window?.eligibility ?? null,
+      ],
+    )
+  ).rows;
+  const order = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
+  return roster.sort(
+    (a, b) =>
+      order.compare(a.roll_number, b.roll_number) ||
+      order.compare(a.student_number, b.student_number),
+  );
+}
 export async function paperScope(db: DB, a: Actor, id: string) {
   const p = (
     await db.query(

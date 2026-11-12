@@ -93,6 +93,19 @@ try {
     .getByRole("navigation")
     .getByRole("button", { name: "Marks entry", exact: true })
     .click();
+  const assessmentResponse = await page.request.get(
+    new URL("/v1/assessments", page.url()).toString(),
+  );
+  const seedPaper = (await assessmentResponse.json()).find(
+    (p: any) => p.section_id === seedSection.id && p.paper_code === "P01",
+  );
+  if (!seedPaper) throw new Error("Missing synthetic Section A paper fixture");
+  await expect(
+    page
+      .getByLabel("Paper", { exact: true })
+      .locator(`option[value="${seedPaper.id}"]`),
+  ).toHaveCount(1);
+  await page.getByLabel("Paper", { exact: true }).selectOption(seedPaper.id);
   const examLeave = page.getByRole("checkbox", {
       name: "Exam leave SYN-001",
       exact: true,
