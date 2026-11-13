@@ -33,6 +33,8 @@ bash scripts/institute.sh create-admin
 
 The final command asks for your administrator email, a private password of 12–128 characters and confirmation. Typed passwords are hidden. Save the password in your password manager.
 
+If administrator creation fails, use the latest `scripts/institute.sh` and retry `create-admin`. The updated prompt reports an invalid email or the received password length, without printing the password or a raw stack trace. Passwords must contain 12–128 characters; confirmation must match exactly. Email whitespace is removed, while password spaces and special characters are preserved. The prompt fix works with the existing application image. If setup reports that the institute already exists, sign in with its existing administrator; bootstrap does not replace an existing account or clear the database.
+
 Open **<http://localhost:3002>** and sign in with that administrator. The institute starts with the two programs and nine editable class levels, but **no demo students, subjects, class sections, academic years or sample staff accounts**. Grading policy still requires review and approval before official publication. Demo credentials do not sign in to this installation.
 
 The institute has its own Docker volume, private `.env.institute` configuration, and session cookie prefix. Restarting it runs migrations without running a demo seed:

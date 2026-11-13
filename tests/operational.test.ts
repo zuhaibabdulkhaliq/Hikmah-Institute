@@ -36,6 +36,46 @@ function collector() {
     }),
   };
 }
+async function administratorPromptScript() {
+  const source = await readFile("scripts/institute.sh", "utf8");
+  const match = source.match(/^  bootstrap_script='\n([\s\S]*?)\n'$/m);
+  assert(match, "Administrator stdin wrapper missing");
+  return match[1];
+}
+test("Administrator prompts identify invalid input without disclosing secrets or connecting to the database", async () => {
+  const code = await administratorPromptScript();
+  for (const [email, password, message] of [
+    ["not-an-email", "Private-valid-password-2026!", "email is invalid"],
+    ["owner@institute.example", "DO-NOT-LEAK", "Password length is 11"],
+    ["owner@institute.example", "", "Password length is 0"],
+    ["owner@institute.example", "secret".repeat(22), "Password length is 132"],
+    ["owner@institute.example", "private".repeat(2000), "Input is too long"],
+  ]) {
+    assert.throws(
+      () =>
+        execFileSync(
+          process.execPath,
+          ["--import", "tsx", "--input-type=module", "-e", code],
+          {
+            env: { ...process.env, DATABASE_URL: "not-a-database-url" },
+            input: `${email}\n${password}\n`,
+            stdio: "pipe",
+          },
+        ),
+      (error: any) => {
+        const stderr = String(error.stderr),
+          stdout = String(error.stdout);
+        assert.equal(error.status, 1);
+        assert(stderr.includes(message), stderr);
+        assert(!stderr.includes(email));
+        if (password) assert(!stderr.includes(password));
+        assert.equal(stdout, "");
+        assert(!stderr.includes("at ModuleJob"), "Avoid raw stack traces");
+        return true;
+      },
+    );
+  }
+});
 test("Authenticated backups stream arbitrary data, use fresh salts and work with standalone Node 24", async () => {
   const data = Buffer.concat([
       randomBytes(131072),
@@ -159,7 +199,7 @@ test("Fresh institute bootstrap starts without demo students, subjects, classes 
       NODE_ENV: "production",
       AUTH_COOKIE_PREFIX: "hikmah-institute",
       BOOTSTRAP_ADMIN_EMAIL: "Owner@institute.example",
-      BOOTSTRAP_ADMIN_PASSWORD: "Private-owner-2026-release!",
+      BOOTSTRAP_ADMIN_PASSWORD: "  Private-owner-'$`\\-2026-release!  ",
       INSTITUTE_NAME: "Synthetic fresh institute",
     };
     execFileSync(process.execPath, ["--import", "tsx", "scripts/migrate.ts"], {
@@ -168,8 +208,18 @@ test("Fresh institute bootstrap starts without demo students, subjects, classes 
     });
     execFileSync(
       process.execPath,
-      ["--import", "tsx", "scripts/bootstrap-admin.ts"],
-      { env, stdio: "pipe" },
+      [
+        "--import",
+        "tsx",
+        "--input-type=module",
+        "-e",
+        await administratorPromptScript(),
+      ],
+      {
+        env,
+        input: ` \t${env.BOOTSTRAP_ADMIN_EMAIL}\t \n${env.BOOTSTRAP_ADMIN_PASSWORD}\n`,
+        stdio: "pipe",
+      },
     );
     const check = async () => {
       const row = (

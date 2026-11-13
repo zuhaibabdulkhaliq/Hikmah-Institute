@@ -17,15 +17,46 @@ case "${1:-start}" in
   printf '\nInstitute ready: http://localhost:%s\nFirst installation: run bash scripts/institute.sh create-admin\nThe demo database was not changed. No seed is run in this mode.\n' "$port"
   ;;
  create-admin)
-  read -r -p 'Administrator email: ' BOOTSTRAP_ADMIN_EMAIL
-  read -r -s -p 'Private password (12–128 characters): ' BOOTSTRAP_ADMIN_PASSWORD
+  IFS= read -r -p 'Administrator email: ' administrator_email
+  IFS= read -r -s -p 'Private password (12–128 characters): ' administrator_password
   printf '\n'
-  read -r -s -p 'Confirm password: ' password_confirmation
+  IFS= read -r -s -p 'Confirm password: ' password_confirmation
   printf '\n'
-  [[ "$BOOTSTRAP_ADMIN_PASSWORD" == "$password_confirmation" ]] || { printf 'Passwords do not match.\n' >&2; exit 1; }
-  export BOOTSTRAP_ADMIN_EMAIL BOOTSTRAP_ADMIN_PASSWORD
-  "${compose[@]}" exec -T -e BOOTSTRAP_ADMIN_EMAIL -e BOOTSTRAP_ADMIN_PASSWORD api node --import tsx scripts/bootstrap-admin.ts
-  unset BOOTSTRAP_ADMIN_PASSWORD password_confirmation BOOTSTRAP_ADMIN_EMAIL
+  [[ "$administrator_password" == "$password_confirmation" ]] || { printf 'Passwords do not match.\n' >&2; exit 1; }
+  # Send credentials on stdin, never in arguments or Docker environment options.
+  # This wrapper works with the existing image; no image rebuild is needed.
+  bootstrap_script='
+import { z } from "zod";
+try {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of process.stdin) {
+    size += chunk.length;
+    if (size > 8192) throw new Error("Input is too long. Use an email and a password of 12–128 characters.");
+    chunks.push(chunk);
+  }
+  const lines = Buffer.concat(chunks).toString("utf8").split("\n");
+  if (lines.length !== 3 || lines[2] !== "")
+    throw new Error("Setup input was incomplete. Run create-admin again and enter each field once.");
+  const email = lines[0].trim().toLowerCase(), password = lines[1];
+  if (!z.email().safeParse(email).success)
+    throw new Error("Administrator email is invalid. Enter a complete email address without spaces inside it.");
+  if (password.length < 12 || password.length > 128)
+    throw new Error(`Password length is ${password.length}; it must be 12–128 characters. The password was not displayed or saved.`);
+  process.env.BOOTSTRAP_ADMIN_EMAIL = email;
+  process.env.BOOTSTRAP_ADMIN_PASSWORD = password;
+  await import("./scripts/bootstrap-admin.ts");
+} catch (error) {
+  console.error("Administrator setup failed: " + error.message);
+  process.exitCode = 1;
+} finally {
+  delete process.env.BOOTSTRAP_ADMIN_EMAIL;
+  delete process.env.BOOTSTRAP_ADMIN_PASSWORD;
+}
+'
+  printf '%s\n%s\n' "$administrator_email" "$administrator_password" | \
+    "${compose[@]}" exec -T api node --import tsx --input-type=module -e "$bootstrap_script"
+  unset administrator_password password_confirmation administrator_email bootstrap_script
   ;;
  stop) "${compose[@]}" stop ;;
  status) "${compose[@]}" ps ;;
