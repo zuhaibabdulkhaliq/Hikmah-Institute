@@ -15,7 +15,7 @@ import {
   type TextProps,
   type TextInputProps,
 } from "react-native";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "../lib/storage";
 import {
   languageKey,
   languageOf,
@@ -76,8 +76,10 @@ export function TextInput({ style, ...props }: TextInputProps) {
   const { language } = useI18n();
   const ltr =
     props.secureTextEntry ||
-    props.keyboardType === "email-address" || props.keyboardType === "url" ||
+    props.keyboardType === "email-address" ||
+    props.keyboardType === "url" ||
     props.keyboardType === "numeric" ||
+    props.keyboardType === "numbers-and-punctuation" ||
     props.keyboardType === "decimal-pad";
   return (
     <NativeTextInput

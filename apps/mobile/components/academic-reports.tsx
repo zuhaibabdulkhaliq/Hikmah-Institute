@@ -1,47 +1,14 @@
-import { serverURL } from "./connection";
-import { Text, LocalizedLabel, useI18n } from "./language";
 import { useEffect, useState } from "react";
-import { View, Pressable, ScrollView, StyleSheet } from "react-native";
+import { View } from "react-native";
 import type { createClient } from "@hikmah/api-client";
-import { colors, radii } from "@hikmah/ui-tokens";
-import { File, Paths } from "expo-file-system";
-import * as Sharing from "expo-sharing";
-import * as SecureStore from "expo-secure-store";
+import { Text, useI18n } from "./language";
+import { Button, Card, Choice, Disclosure, Notice, ui } from "./ui";
+import { RecordList, ResourceStatus, options, useResource } from "./workspace";
+import { shareFile } from "../lib/files";
 type Request = ReturnType<typeof createClient>;
 type Run = (fn: () => Promise<void>) => Promise<void>;
-
-async function share(path: string) {
-  const token = await SecureStore.getItemAsync("hikmah-session"),
-    r = await fetch((await serverURL()) + path, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  if (!r.ok) throw new Error("Report download denied");
-  const file = new File(Paths.cache, `performance-${Date.now()}.pdf`);
-  try {
-    file.write(new Uint8Array(await r.arrayBuffer()));
-    if (!(await Sharing.isAvailableAsync()))
-      throw new Error("File sharing is unavailable on this device");
-    await Sharing.shareAsync(file.uri, { mimeType: "application/pdf" });
-  } finally {
-    if (file.exists) file.delete();
-  }
-}
-const action = (label: string, fn: () => void, selected = false) => (
-  <Pressable
-    key={label}
-    accessibilityRole="button"
-    accessibilityState={{ selected }}
-    onPress={fn}
-    style={[styles.button, selected && styles.selected]}
-  >
-    <LocalizedLabel style={{ color: selected ? "white" : colors.primary }}>
-      {label}
-    </LocalizedLabel>
-  </Pressable>
-);
 export function NativeAttendanceTotals({
   section,
-  request,
   run,
   refreshKey,
 }: {
@@ -51,92 +18,87 @@ export function NativeAttendanceTotals({
   refreshKey?: number;
 }) {
   const { t } = useI18n();
-
-  const [open, setOpen] = useState(false);
   const [period, setPeriod] = useState("YEAR"),
-    [cycle, setCycle] = useState(""),
-    [cycles, setCycles] = useState<any[]>([]),
-    [data, setData] = useState<any>(null);
+    [cycle, setCycle] = useState("");
+  const cycles = useResource<any[]>(
+    `/v1/sections/${section}/attendance-periods`,
+    [],
+  );
   useEffect(() => {
-    setPeriod("YEAR");
-    void run(async () => {
-      const c = await request<any[]>(
-        `/v1/sections/${section}/attendance-periods`,
-      );
-      setCycles(c);
-      setCycle(c.find((x) => x.code === "SHASH_MAHI")?.id ?? c[0]?.id ?? "");
-    });
-  }, [section]);
-  async function load() {
-    if (!section || (period !== "YEAR" && !cycle)) return;
-    const q = new URLSearchParams({
-      period,
-      ...(period !== "YEAR" ? { cycleId: cycle } : {}),
-    });
-    setData(await request(`/v1/sections/${section}/attendance-summary?${q}`));
-  }
-  useEffect(() => {
-    void run(load);
-  }, [section, period, cycle, refreshKey]);
+    setCycle(
+      cycles.data.find((c) => c.code === "SHASH_MAHI")?.id ??
+        cycles.data[0]?.id ??
+        "",
+    );
+  }, [cycles.data]);
+  const q = new URLSearchParams({
+    period,
+    ...(period !== "YEAR" ? { cycleId: cycle } : {}),
+  });
+  const r = useResource<any>(
+    period === "YEAR" || cycle
+      ? `/v1/sections/${section}/attendance-summary?${q}`
+      : null,
+    null,
+  );
+  useEffect(() => r.refresh(), [refreshKey]);
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>{t("Attendance totals")}</Text>
-      <Text style={styles.note}>
-        {t(
-          "Present 1 · Half 0.5 · Absent 0 · Leave excluded. Only submitted academic days count.",
+    <Disclosure title="Attendance totals">
+      <Choice
+        label="Attendance period"
+        value={period}
+        options={[
+          { value: "YEAR", label: "Year to date" },
+          { value: "SESSION", label: "Session" },
+          { value: "PREVIOUS_SESSION", label: "Previous session" },
+        ]}
+        onChange={setPeriod}
+      />
+      {period !== "YEAR" && (
+        <Choice
+          label="Exam session"
+          value={cycle}
+          options={options(cycles.data, (c) => c.title)}
+          onChange={setCycle}
+        />
+      )}
+      <ResourceStatus resource={r} />
+      <RecordList
+        rows={r.data?.students ?? []}
+        render={(s) => (
+          <View
+            key={s.enrollmentId}
+            style={{
+              paddingVertical: 14,
+              borderBottomWidth: 1,
+              borderColor: "#dce8f2",
+            }}
+          >
+            <Text style={ui.label}>{s.name}</Text>
+            <Text style={ui.muted}>
+              {t("Present")}: {s.present} · {t("Absent")}: {s.absent} ·{" "}
+              {t("Half")}: {s.half} · {t("Leave")}: {s.leave}
+            </Text>
+            <Text style={ui.muted}>
+              {s.academicDays} {t("academic days")} · {s.unmarked}{" "}
+              {t("unmarked")} ·{" "}
+              {s.displayPercent == null
+                ? t("Incomplete / N/A")
+                : s.displayPercent + "%"}
+            </Text>
+          </View>
         )}
-      </Text>
-      {action(open ? "Hide attendance totals" : "Show attendance totals", () =>
-        setOpen(!open),
-      )}
-      {open && (
-        <>
-          <ScrollView horizontal>
-            {[
-              ["YEAR", "Year to date"],
-              ["SESSION", "Session"],
-              ["PREVIOUS_SESSION", "Previous session"],
-            ].map(([key, label]) =>
-              action(label, () => setPeriod(key), period === key),
-            )}
-          </ScrollView>
-          {period !== "YEAR" && (
-            <ScrollView horizontal>
-              {cycles.map((c) =>
-                action(c.title, () => setCycle(c.id), cycle === c.id),
-              )}
-            </ScrollView>
-          )}
-          {action("Refresh totals", () => void run(load))}
-          {data?.students.map((s: any) => (
-            <View key={s.enrollmentId} style={styles.record}>
-              <Text style={styles.title}>{s.name}</Text>
-              <Text style={styles.note}>
-                {t("P ")}
-                {s.present} {t(" · A ")}
-                {s.absent} {t(" · Half ")}
-                {s.half} {t(" · Leave ")}
-                {s.leave}
-              </Text>
-              <Text style={styles.note}>
-                {s.academicDays} {t(" academic days · ")}
-                {s.unmarked} {t(" unmarked ·")}{" "}
-                {t(
-                  s.displayPercent === null
-                    ? "Incomplete / N/A"
-                    : s.displayPercent + "%",
-                )}
-              </Text>
-            </View>
-          ))}
-        </>
-      )}
-    </View>
+      />
+      <Button
+        title="Refresh totals"
+        secondary
+        onPress={() => void run(async () => r.refresh())}
+      />
+    </Disclosure>
   );
 }
 export function NativePerformance({
   section,
-  request,
   run,
 }: {
   section: string;
@@ -144,188 +106,168 @@ export function NativePerformance({
   run: Run;
 }) {
   const { t } = useI18n();
-
-  const [roster, setRoster] = useState<any[]>([]),
-    [student, setStudent] = useState(""),
-    [data, setData] = useState<any>(null),
+  const [student, setStudent] = useState(""),
     [year, setYear] = useState(""),
     [cycle, setCycle] = useState("");
+  const roster = useResource<any[]>(`/v1/sections/${section}/enrollments`, []);
+  useEffect(() => setStudent(roster.data[0]?.student_id ?? ""), [roster.data]);
+  const report = useResource<any>(
+    student ? `/v1/students/${student}/performance` : null,
+    null,
+  );
   useEffect(() => {
-    setData(null);
-    void run(async () => {
-      const r = await request<any[]>(`/v1/sections/${section}/enrollments`);
-      setRoster(r);
-      setStudent(r[0]?.student_id ?? "");
-    });
-  }, [section]);
-  useEffect(() => {
-    if (student)
-      void run(async () => {
-        const r = await request<any>(`/v1/students/${student}/performance`);
-        setData(r);
-        setYear("");
-        setCycle("");
-      });
+    setYear("");
+    setCycle("");
   }, [student]);
-  const years =
-    data?.years.filter((y: any) => !year || y.yearId === year) ?? [];
+  const data = report.data;
   const q = new URLSearchParams({
     ...(year ? { yearId: year } : {}),
     ...(cycle ? { cycleId: cycle } : {}),
   });
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>{t("Student performance & history")}</Text>
-      <ScrollView horizontal>
-        {roster.map((s) =>
-          action(
-            s.full_name,
-            () => setStudent(s.student_id),
-            student === s.student_id,
-          ),
-        )}
-      </ScrollView>
-      <ScrollView horizontal>
-        {action(
-          "All years",
-          () => {
-            setYear("");
-            setCycle("");
-          },
-          !year,
-        )}
-        {data?.years.map((y: any) =>
-          action(
-            y.year,
-            () => {
-              setYear(y.yearId);
+    <Card title="Student performance & history">
+      <Choice
+        label="Student"
+        value={student}
+        options={roster.data.map((s) => ({
+          value: s.student_id,
+          label: `${s.roll_number} · ${s.full_name}`,
+        }))}
+        onChange={setStudent}
+      />
+      <ResourceStatus resource={report} />
+      {data && (
+        <>
+          <Choice
+            label="Academic year"
+            value={year}
+            options={[
+              { value: "", label: "All years" },
+              ...(Array.from(
+                new Map(
+                  data.years.map((y: any) => [
+                    y.yearId,
+                    { value: y.yearId, label: y.year },
+                  ]),
+                ).values(),
+              ) as { value: string; label: string }[]),
+            ]}
+            onChange={(v) => {
+              setYear(v);
               setCycle("");
-            },
-            year === y.yearId,
-          ),
-        )}
-      </ScrollView>
-      {data?.academicYears
-        ?.filter((y: any) => !year || y.yearId === year)
-        .map((y: any) => (
-          <View style={styles.record} key={y.yearId}>
-            <Text style={styles.title}>
-              {t("Whole year · ")}
-              {y.year}
-            </Text>
-            <Text style={styles.note}>
-              {t("P ")}
-              {y.attendance.present} {t(" · A ")}
-              {y.attendance.absent} {t(" · Half")} {y.attendance.half}{" "}
-              {t(" · Leave ")}
-              {y.attendance.leave} {t(" ·")}{" "}
-              {t(y.attendance.displayPercent ?? "Incomplete / N/A")}
-              {t("%")}
-            </Text>
-          </View>
-        ))}
-      {years.map((y: any) => (
-        <View key={y.enrollmentId} style={styles.record}>
-          <Text style={styles.title}>
-            {y.year} {t(" · ")}
-            {y.section}
-          </Text>
-          <Text style={styles.note}>
-            {y.program} {t(" · ")}
-            {y.level}
-          </Text>
-          {y.attendance && (
-            <Text style={styles.note}>
-              {t("P ")}
-              {y.attendance.present} {t(" · A ")}
-              {y.attendance.absent} {t(" · Half")} {y.attendance.half}{" "}
-              {t(" · Leave ")}
-              {y.attendance.leave} {t(" · Attendance")}{" "}
-              {t(y.attendance.displayPercent ?? "Incomplete")}
-              {t("%")}
-            </Text>
-          )}
-          <ScrollView horizontal>
-            {action("All sessions", () => setCycle(""), !cycle)}
-            {y.sessions.map((s: any) =>
-              action(s.title, () => setCycle(s.cycleId), cycle === s.cycleId),
-            )}
-          </ScrollView>
-          {y.sessions
-            .filter((s: any) => !cycle || s.cycleId === cycle)
-            .map((s: any) => (
-              <View key={s.cycleId} style={styles.record}>
-                <Text style={styles.title}>{s.title}</Text>
-                <Text style={styles.note}>
-                  {s.result.total} {t(" / ")}
-                  {s.result.possible} {t(" ·")}{" "}
-                  {t(
-                    s.result.percent === null
-                      ? "Pending"
-                      : Number(s.result.percent).toFixed(1) + "%",
-                  )}{" "}
-                  {t("· ")}
-                  {t(s.official ? "Published" : "Draft")}
+            }}
+          />
+          <Choice
+            label="Exam session"
+            value={cycle}
+            options={[
+              { value: "", label: "All sessions" },
+              ...(Array.from(
+                new Map(
+                  data.years
+                    .filter((y: any) => !year || y.yearId === year)
+                    .flatMap((y: any) =>
+                      y.sessions.map((s: any) => [
+                        s.cycleId,
+                        { value: s.cycleId, label: s.title },
+                      ]),
+                    ),
+                ).values(),
+              ) as { value: string; label: string }[]),
+            ]}
+            onChange={setCycle}
+          />
+          {data.academicYears
+            ?.filter((y: any) => !year || y.yearId === year)
+            .map((y: any) => (
+              <Card key={y.yearId} title={y.year}>
+                <Text style={ui.muted}>
+                  {t("Whole year attendance")}:{" "}
+                  {y.attendance.displayPercent ?? t("Incomplete")}%
                 </Text>
-                <Text style={styles.note}>
-                  {t("Position ")}
-                  {s.result.rank ?? "—"} {t(" ·")}{" "}
-                  {t(s.positionReason ?? "Eligible")}
+                <Text style={ui.muted}>
+                  {t("Present")}: {y.attendance.present} · {t("Absent")}:{" "}
+                  {y.attendance.absent} · {t("Half")}: {y.attendance.half} ·{" "}
+                  {t("Leave")}: {y.attendance.leave}
                 </Text>
-              </View>
+              </Card>
             ))}
-        </View>
-      ))}
-      {!!student &&
-        action(
-          "Share student report PDF",
-          () =>
-            void run(() =>
-              share(`/v1/students/${student}/performance.pdf?${q}`),
-            ),
-        )}
-      {action(
-        "Share class report PDF",
-        () =>
-          void run(() =>
-            share(
-              `/v1/sections/${section}/performance.pdf${cycle ? "?cycleId=" + cycle : ""}`,
-            ),
-          ),
+          {data.years
+            .filter((y: any) => !year || y.yearId === year)
+            .map((y: any) => (
+              <Disclosure
+                key={y.enrollmentId}
+                title={`${y.year} · ${y.section}`}
+                initial
+              >
+                <Text style={ui.muted}>
+                  {y.program} · {y.level}
+                </Text>
+                {y.sessions
+                  .filter((s: any) => !cycle || s.cycleId === cycle)
+                  .map((s: any) => (
+                    <View key={s.cycleId} style={{ paddingVertical: 13 }}>
+                      <Text style={ui.label}>
+                        {s.title} · {t(s.official ? "Published" : "Draft")}
+                      </Text>
+                      <Text style={ui.muted}>
+                        {s.result.total} / {s.result.possible} ·{" "}
+                        {s.result.percent == null
+                          ? t("Pending")
+                          : Number(s.result.percent).toFixed(1) + "%"}
+                      </Text>
+                      <Text style={ui.muted}>
+                        {t("Position")}: {s.result.rank ?? "—"} ·{" "}
+                        {t(s.positionReason ?? "Eligible")}
+                      </Text>
+                    </View>
+                  ))}
+              </Disclosure>
+            ))}
+          <Button
+            title="Share student report PDF"
+            icon="share-outline"
+            onPress={() =>
+              void run(() =>
+                shareFile(
+                  `/v1/students/${student}/performance.pdf?${q}`,
+                  "student-performance.pdf",
+                ),
+              )
+            }
+          />
+          <Button
+            title="Share class report PDF"
+            secondary
+            icon="share-outline"
+            onPress={() =>
+              void run(() =>
+                shareFile(
+                  `/v1/sections/${section}/performance.pdf${cycle ? "?cycleId=" + cycle : ""}`,
+                  "class-performance.pdf",
+                ),
+              )
+            }
+          />
+          <Button
+            title="Download class report CSV"
+            secondary
+            icon="download-outline"
+            onPress={() =>
+              void run(() =>
+                shareFile(
+                  `/v1/sections/${section}/performance.csv${cycle ? "?cycleId=" + cycle : ""}`,
+                  "class-performance.csv",
+                  "text/csv",
+                ),
+              )
+            }
+          />
+        </>
       )}
-    </View>
+      {!student && (
+        <Notice text="Enroll students in this class to see their performance." />
+      )}
+    </Card>
   );
 }
-const styles = StyleSheet.create({
-  card: {
-    padding: 18,
-    backgroundColor: colors.surface,
-    borderRadius: radii.card,
-    borderColor: "white",
-    borderWidth: 1,
-    marginVertical: 14,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.ink,
-    marginBottom: 8,
-  },
-  note: { color: colors.muted, fontSize: 13, lineHeight: 21, marginBottom: 10 },
-  button: {
-    padding: 13,
-    borderRadius: radii.control,
-    backgroundColor: colors.secondary,
-    marginRight: 8,
-    marginBottom: 10,
-    minHeight: 46,
-    justifyContent: "center",
-  },
-  selected: { backgroundColor: colors.primary },
-  record: {
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-    paddingTop: 12,
-    marginTop: 8,
-  },
-});

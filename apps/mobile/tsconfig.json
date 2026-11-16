@@ -1,5 +1,8 @@
 {
   "extends": "expo/tsconfig.base",
-  "compilerOptions": { "strict": true, "skipLibCheck": true },
-  "include": ["app/**/*.tsx", "expo-env.d.ts"]
+  "compilerOptions": {
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["app/**/*.tsx", "expo-env.d.ts", ".expo/types/**/*.ts"]
 }

@@ -36,6 +36,7 @@ try {
     "tests/session-sheet.test.ts",
     "tests/release.test.ts",
     "tests/operational.test.ts",
+    "tests/mobile-workspace.test.ts",
     "tests/zz-academic-rules.test.ts",
   ]);
 } finally {

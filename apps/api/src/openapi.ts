@@ -234,6 +234,26 @@ export function openapi(app: FastifyInstance) {
           required: true,
           schema: { type: "string", pattern: "^[0-9]+$" },
         });
+      if (
+        method === "GET" &&
+        /^\/v1\/(academic-years|programs|levels|students|subjects)$/.test(
+          route.url,
+        )
+      )
+        parameters.push(
+          {
+            name: "limit",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 1, maximum: 500, default: 500 },
+          },
+          {
+            name: "offset",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 0, default: 0 },
+          },
+        );
       if (route.url.endsWith("/calendar") && method === "GET")
         parameters.push(
           ...["from", "through", "offset"].map((name) => ({

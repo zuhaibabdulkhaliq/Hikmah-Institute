@@ -13,7 +13,7 @@ Use **English / اردو** on the sign-in screen or in the web header, and at th
 - **Subject teacher:** only assigned papers and marks.
 - **Ameer:** attendance for the assigned section, including its attendance totals; no marks/results/account administration.
 
-The native app provides daily/grid attendance, assigned-paper marks, exam leave/timing, scoped results/performance, history/correction requests and password changes. Full institute setup, calendar administration, bulk class CSV import, policy approval and user administration are web workflows. The website is also responsive on phones/tablets. The native app is a focused staff companion, not a duplicate of every administrative web page.
+The native app now covers all eleven web workspaces with role-specific native forms, CSV file picking, PDF sharing, setup, calendars, policies, staff administration and publication. Phones use floating bottom tabs and a searchable More menu; tablets use a sidebar. See [the parity record](MOBILE_PARITY.md) and [phone launch instructions](MOBILE_TESTING.md). The website remains responsive on phones/tablets. Both clients use the same API, data, permissions and approval gates; a newly available screen does not authorize a lower role to use it.
 
 ## Stable local demo accounts
 

@@ -1,4 +1,6 @@
+import { mobileUr } from "./mobile-messages";
 export const ur: Record<string, string> = {
+  ...mobileUr,
   Overview: "خلاصہ",
   "Academic setup": "تعلیمی ترتیب",
   "Academic calendar": "تعلیمی تقویم",

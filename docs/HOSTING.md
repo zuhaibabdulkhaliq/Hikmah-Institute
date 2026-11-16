@@ -82,7 +82,7 @@ Open your HTTPS address and sign in. Under **Academic setup → Institute detail
 
 ## 5. Connect phones
 
-Use the **same public HTTPS origin**, for example `https://school.your-domain.org`, in the native app's **Server address** field. Each phone remembers it. Production/preview apps require HTTPS. Follow [mobile testing and distribution](MOBILE_TESTING.md) for Expo Go, development, Android APK, iPhone ad hoc/TestFlight and store-signing steps.
+Use the **same public HTTPS origin**, for example `https://school.your-domain.org`, in the native app's **Server address** field. Each phone remembers it. Web and mobile use the same database, eleven role-controlled workspaces and server approval checks; no separate mobile database or data sync service is needed. Production/preview apps require HTTPS. Follow [mobile testing and distribution](MOBILE_TESTING.md) for Expo Go, development, Android APK, iPhone ad hoc/TestFlight and store-signing steps.
 
 The mobile app stores only its session token and preferences in OS secure storage; it does not save login passwords. Changing servers discards the previous server's session. Browser sessions use secure HTTP-only cookies in production. Native bearer requests omit cookies, and account/role/password changes invalidate access server-side.
 

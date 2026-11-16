@@ -1,5 +1,17 @@
 # Implementation and verification record
 
+## 16 November 2026 — complete native workspace redesign
+
+Rebuilt the Expo app as native blue/white glass screens with a genuine institute logo, floating role-specific phone tabs, searchable full-workspace menu, wide-tablet sidebar, rounded controls, native blur and reduced-transparency/older-Android fallbacks. Web and mobile now share all eleven routes and role rules. The native app covers academic setup, enrollments/promotions and staff assignments, flexible calendars, curricula/schemes/windows, attendance, marks, student/assigned-paper/class CSV workflows, results/performance/publication, policies, people/passwords/invitations, corrections and audit. See [the workflow parity table](MOBILE_PARITY.md) and [updated Mac/phone instructions](MOBILE_TESTING.md).
+
+Added searchable virtualized selectors, incremental record lists, contextual paper scoping, stale-load cancellation, guarded unsaved navigation, explicit action feedback, Urdu/Arabic numeric input, explicit zero/blank handling and readable reconnect/validation errors. Passwords remain salted hashes server-side; native sessions remain in SecureStore, and browser-preview sessions are memory-only. Catalog pagination removes the old 500-record truncation for admin resources without granting new access. CORS explicitly allows the existing PUT/PATCH methods for the native browser preview. No academic policies were invented or approved for a retained installation, and no migrations were added.
+
+The Docker phone launcher now has distinct `demo` and `institute` targets. Institute mode uses the existing private institute database/account and printed LAN address (normally port 3002), without synthetic seeding. Expo CLI login remains private and persistent in its own Docker home volume. Updated packages require the full source update and image rebuild, rather than replacing one script.
+
+Verification: **67 tests passed, 0 failed, 0 skipped**, all 12 migrations, lint, root/web/mobile types and production Next.js/Fastify builds. React Native browser checks cover every route at six phone/tablet widths and Urdu; native form scenarios complete setup, calendar, attendance, scheme, marks, CSV validation/apply, synthetic publication/PDF, account creation and role/password/invitation boundaries on a disposable review installation. A slow-metadata/unsaved-navigation check caught and corrected stacked menu/confirmation overlays. Both iOS and Android Hermes bundles export, and production dependency audit reports no known vulnerabilities. The rebuilt compiled web/API stack passed the portal regression at six widths. The actual institute Docker phone launcher started its separate empty review institute and Metro without seeding; retained demo counts remained 103 students, 11 subjects, 103 enrollments and 814 marks. Detailed evidence and remaining gates are recorded in [MOBILE_PARITY.md](MOBILE_PARITY.md).
+
+Remaining before institute rollout: physical iPhone/Android and Mac/Safari acceptance, native keyboard/SecureStore/blur/file picker/share checks, institute policy and PDF sign-off, chosen HTTPS hosting and signed builds, monitored off-site backups/PITR, production-equivalent recovery and workload checks, and operator training. Browser rendering of React Native components and native JavaScript exports do not certify device OS behavior. Retained demo/institute data and private passwords were preserved.
+
 ## 13 November 2026 — clear and portable administrator setup
 
 Replaced opaque administrator prompt failures with per-field validation inside the container before bootstrap. The prompt reports the received password length or an invalid email without printing credentials, normalizes email whitespace/case, and preserves password spaces, quotes, backticks, backslashes and other special characters. Credentials are piped through standard input rather than forwarded with Compose environment flags; they are not placed in process arguments or Docker container configuration. An inline wrapper uses the existing bootstrap module, so the operator can update only `scripts/institute.sh` without rebuilding the app image. Database bootstrap remains transactional, hashes the password and refuses an existing institute.
@@ -192,7 +204,9 @@ apps/
   api/src/          auth, scopes, academic records, attendance, policies,
                     marks/CSV, revisions, immutable results, live OpenAPI
   web/app/         staff portal, guided configuration, account activation
-  mobile/app/      Expo attendance, marks, history, correction and report flows
+  mobile/app/      Native phone/tablet shell for all eleven workspaces
+  mobile/screens/  Native setup, calendar, attendance, exams, marks, results, policies and staff
+  mobile/components/ Shared native forms, glass controls, imports, reports and account UI
 packages/
   domain/src/      schemas and exact decimal policies/calculations
   api-client/src/  shared client, models and session errors

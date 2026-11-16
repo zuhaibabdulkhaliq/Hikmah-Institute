@@ -16,14 +16,14 @@ The portal now uses a pale blue canvas, frosted white panels, blue accents, roun
 
 ## Expo
 
-The shared `@hikmah/ui-tokens` package defines blue/white colors and radius values. Native screens use translucent white surfaces, rounded controls, subtle shadows, safe-area padding and improved pressed/disabled feedback. Email/password inputs have explicit accessibility labels and keyboard handling keeps the sign-in action usable. Native surfaces do not require platform-specific glass APIs or a blur library.
+The shared `@hikmah/ui-tokens` package defines blue/white colors and radius values. Native screens use translucent white surfaces, rounded controls, subtle shadows, safe-area padding and improved pressed/disabled feedback. Email/password inputs have explicit accessibility labels and keyboard handling keeps the sign-in action usable. The 16 November native redesign adds Expo Blur and gradients, floating role-specific phone tabs, a searchable full-workspace menu and a wide-tablet sidebar. Reduced transparency and older Android devices receive readable opaque surfaces. All eleven web workflows now have native screens; see [mobile coverage and screenshots](MOBILE_PARITY.md).
 
 ## Original logo
 
-The original user-uploaded PNG is now included at `apps/web/public/hikmah_logo.png` and detected at build time. It has not been recreated or altered. Replace that exact file and rebuild to update it. Without the asset, a decorative academic mark and the institute name are shown. See [the Mac logo instructions](MACOS-APPLE-SILICON.md#use-your-original-logo).
+The original user-uploaded PNG is now included at `apps/web/public/hikmah_logo.png` and detected at build time. It has not been recreated or altered. The native app includes the same logo at `apps/mobile/assets-hikmah-logo.png`. Replace both assets and rebuild to update them. Without the asset, a decorative academic mark and the institute name are shown. See [the Mac logo instructions](MACOS-APPLE-SILICON.md#use-your-original-logo).
 
 ## Verification
 
-Use `bash scripts/demo.sh test` for lint, type checks, the 31 domain/database/PDF tests and production builds. With an API/web instance running and a private demo password supplied via the environment, `scripts/browser-smoke.ts` exercises login, attendance, raw result preview, policy editing, all ten screens at 1440/1024/820/768/390/320px, keyboard navigation, sign-out and activation. Screenshots remain in ignored `.data/screenshots/`.
+Use `bash scripts/demo.sh test` for lint, type checks, the 67 domain/database/PDF/API tests and production builds. With an API/web instance running and a private demo password supplied via the environment, `scripts/browser-smoke.ts` exercises login, attendance, raw result preview, policy editing, all eleven web screens at 1440/1024/820/768/390/320px, keyboard navigation, sign-out and activation. Screenshots remain in ignored `.data/screenshots/`.
 
 Expo iOS/Android bundle export verifies module integration; it does not establish physical-device UI or native E2E acceptance. The uploaded institute PNG was subsequently verified in the running web interface. Official policy sign-off and the remaining rollout gates in the implementation record remain outstanding.

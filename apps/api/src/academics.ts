@@ -94,10 +94,16 @@ export function academics(app: FastifyInstance) {
         return visible;
       }
       admin(a);
+      const page = z
+        .object({
+          limit: z.coerce.number().int().min(1).max(500).default(500),
+          offset: z.coerce.number().int().min(0).default(0),
+        })
+        .parse(req.query);
       return (
         await pool.query(
-          `SELECT * FROM ${table} WHERE organization_id=$1 ORDER BY id LIMIT 500`,
-          [a.org],
+          `SELECT * FROM ${table} WHERE organization_id=$1 ORDER BY id LIMIT $2 OFFSET $3`,
+          [a.org, page.limit, page.offset],
         )
       ).rows;
     });

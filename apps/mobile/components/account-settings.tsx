@@ -41,7 +41,6 @@ export function AccountSettings({
             autoComplete="current-password"
             value={currentPassword}
             onChangeText={setCurrent}
-            maxLength={128}
             editable={!busy}
           />
           <TextInput
@@ -52,7 +51,6 @@ export function AccountSettings({
             autoComplete="new-password"
             value={password}
             onChangeText={setPassword}
-            maxLength={128}
             editable={!busy}
           />
           <TextInput
@@ -62,7 +60,6 @@ export function AccountSettings({
             secureTextEntry
             value={confirm}
             onChangeText={setConfirm}
-            maxLength={128}
             editable={!busy}
           />
           {!!error && <Text accessibilityRole="alert">{t(error)}</Text>}
@@ -75,8 +72,8 @@ export function AccountSettings({
                 setError("Passwords do not match.");
                 return;
               }
-              if (password.length < 12) {
-                setError("Password must contain at least 12 characters.");
+              if (password.length < 12 || password.length > 128) {
+                setError("Use a password of 12–128 characters.");
                 return;
               }
               setBusy(true);

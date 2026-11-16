@@ -60,9 +60,23 @@ export function createClient(
         header && /^\d+$/.test(header)
           ? Math.min(3600, Number(header))
           : undefined;
+      const issues = Array.isArray(result?.issues)
+        ? result.issues
+            .slice(0, 4)
+            .filter((issue: any) => typeof issue.message === "string")
+            .map((issue: any) =>
+              [
+                Array.isArray(issue.path) ? issue.path.join(".") : "",
+                issue.message,
+              ]
+                .filter(Boolean)
+                .join(": "),
+            )
+            .join("; ")
+        : "";
       const message =
         typeof result?.message === "string"
-          ? result.message
+          ? result.message + (issues ? ": " + issues : "")
           : response.status === 429
             ? "Too many requests. Please wait a moment and try again."
             : "The server is temporarily unavailable. Please try again shortly.";
@@ -149,4 +163,43 @@ export function normalizeServerURL(
       "Use HTTPS for the institute server. Local HTTP is available only during development.",
     );
   return url.origin;
+}
+
+export * from "./workspace";
+
+export const isPagedCatalog = (path: string) =>
+  /^\/v1\/(academic-years|programs|levels|students|subjects)$/.test(path);
+export async function readCatalog<T extends { id: string }>(
+  request: ReturnType<typeof createClient>,
+  path: string,
+  options: RequestInit = {},
+): Promise<T[]> {
+  const rows: T[] = [],
+    seen = new Set<string>();
+  const limit = 500;
+  for (let offset = 0; offset < 50000; offset += limit) {
+    const page = await request<T[]>(
+      `${path}?limit=${limit}&offset=${offset}`,
+      options,
+    );
+    if (!Array.isArray(page))
+      throw new ApiError(
+        502,
+        "The server returned an unexpected catalogue response.",
+      );
+    for (const row of page) {
+      if (!row.id || seen.has(row.id))
+        throw new ApiError(
+          409,
+          "The catalogue changed or the server needs an update. Refresh and try again.",
+        );
+      seen.add(row.id);
+      rows.push(row);
+    }
+    if (page.length < limit) return rows;
+  }
+  throw new ApiError(
+    413,
+    "The catalogue is too large for this view. Contact an administrator.",
+  );
 }

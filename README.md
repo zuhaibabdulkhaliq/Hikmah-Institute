@@ -6,7 +6,7 @@ A TypeScript workspace with a Next.js staff portal, an Expo Android/iOS app, a F
 
 The implementation includes academic configuration, scoped staff assignments, synthetic enrollment, daily/grid attendance, teacher paper marks, explicit academic policy approval, result preflight, immutable publication revisions, Urdu PDF exports, staff invitation/activation, CSV import and encrypted backup tools. See [the delivery record](docs/IMPLEMENTATION_STATUS.md) for verification and limitations. This is **not yet approved for real student rollout**.
 
-The staff portal uses a blue-and-white glass theme with rounded surfaces, responsive tables and keyboard navigation; Expo uses the same palette and rounded controls. See [the visual update notes](docs/UI_THEME.md), including how to use the original institute logo.
+The staff portal uses a blue-and-white glass theme with rounded surfaces, responsive tables and keyboard navigation; Expo now has a complete native glass redesign, floating phone tabs, a searchable workspace menu and a tablet sidebar. See [the visual update notes](docs/UI_THEME.md), including how to use the original institute logo.
 
 The [current academic rules and workflows](docs/ACADEMIC_RULES.md) document Present/Absent/Half/Leave, Mushrif and subject-teacher access, the 40% pass rule, timely >80% top-three shared positions, calendars, curricula and student history.
 
@@ -108,7 +108,17 @@ For JSON scheme/policy editors, validation messages describe missing or inconsis
 pnpm dev:mobile
 ```
 
-Use a real API address reachable from the phone; its localhost is not the development host. For LAN development either set `HOST=0.0.0.0` for the API and use the computer's LAN address/port 3001, or use the web proxy's LAN address/port 3000. Use the HTTPS public web origin for deployed mobile clients. Expo uses SecureStore for session tokens. Ameer navigation has attendance, history and correction requests; assigned teachers also have paper entry and authorized reports. Report files are shared through the platform sheet and removed from app cache afterward. Offline writes are not queued. Use a development build or Expo-compatible device runtime for the selected SDK.
+Use a real API address reachable from the phone; its localhost is not the development host. Web and mobile now expose the same eleven role-controlled workspaces through native mobile forms and the shared API. See [mobile workflow coverage](docs/MOBILE_PARITY.md). Native tokens stay in OS SecureStore; report files use the platform share sheet and are removed from cache. Offline writes are not queued.
+
+On your Mac with Docker, test your existing institute with:
+
+```sh
+bash scripts/institute.sh start
+bash scripts/mobile-demo.sh login  # Expo account, only if not already signed in
+bash scripts/mobile-demo.sh institute
+```
+
+Use the printed LAN server address and your private institute account on both phones. For synthetic testing, use `demo` instead of `institute` after building with `bash scripts/demo.sh start`. Download the complete updated source before rebuilding, since this redesign adds native dependencies. Follow [the phone guide](docs/MOBILE_TESTING.md) for Expo SDK compatibility, QR/network troubleshooting and signed builds.
 
 ## Operations
 

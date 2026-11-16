@@ -20,40 +20,27 @@ import { AcademicCalendarPage } from "../components/academic-calendar";
 import { SessionResultSheet } from "../components/session-result-sheet";
 import {
   createClient,
+  isPagedCatalog,
+  readCatalog,
+  workspaceAccess,
+  workspaceViews,
   ApiError,
   type Identity,
   type Section,
   type Sheet,
 } from "@hikmah/api-client";
-const api = createClient("", undefined, () => {
+const baseClient = createClient("", undefined, () => {
   if (typeof window !== "undefined")
     window.dispatchEvent(new Event("hikmah-session-ended"));
 });
-const navigation = [
-  "Overview",
-  "Academic setup",
-  "Academic calendar",
-  "Attendance",
-  "Exams & schemes",
-  "Marks entry",
-  "Policies",
-  "Results & reports",
-  "People & access",
-  "Correction requests",
-  "Audit history",
-];
+const api: ReturnType<typeof createClient> = (path, options) =>
+  isPagedCatalog(path) && (!options?.method || options.method === "GET")
+    ? (readCatalog(baseClient, path, options) as any)
+    : baseClient(path, options);
+const navigation = [...workspaceViews];
 const statuses = ["PRESENT", "ABSENT", "HALF", "LEAVE"];
-function canView(me: Identity | null, view: string) {
-  if (!me) return false;
-  if (me.roles.includes("ADMIN") || view === "Overview") return true;
-  if (view === "Attendance") return me.attendanceSections.length > 0;
-  if (view === "Academic calendar") return me.managedSections.length > 0;
-  if (view === "Marks entry")
-    return me.teachingSections.length > 0 || me.managedSections.length > 0;
-  if (["Exams & schemes", "Results & reports"].includes(view))
-    return me.managedSections.length > 0;
-  return false;
-}
+const canView = (me: Identity | null, view: string) =>
+  !!me && workspaceAccess(me, view);
 const fields: Record<string, string[]> = {
   "academic-years": ["label", "hijri_label", "start_date", "end_date", "state"],
   programs: ["name", "code"],
